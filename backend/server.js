@@ -8,6 +8,9 @@ require('dotenv').config();
 // Import database configuration
 const connectDB = require('./src/config/database');
 
+// Import routes
+const authRoutes = require('./src/routes/authRoutes');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -43,6 +46,9 @@ app.get('/api/test', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
+
+// API Routes
+app.use('/api/auth', authRoutes);
 
 // 404 Handler
 app.use('*', (req, res) => {
