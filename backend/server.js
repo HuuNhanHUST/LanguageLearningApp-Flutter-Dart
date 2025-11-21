@@ -9,7 +9,7 @@ require('dotenv').config();
 const connectDB = require('./src/config/database');
 
 // Import routes
-const authRoutes = require('./src/routes/authRoutes');
+const userRoutes = require('./src/routes/userRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -48,7 +48,7 @@ app.get('/api/test', (req, res) => {
 });
 
 // API Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 
 // 404 Handler
 app.use('*', (req, res) => {
