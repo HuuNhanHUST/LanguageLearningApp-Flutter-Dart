@@ -70,7 +70,13 @@ class MyApp extends StatelessWidget {
         ),
         GoRoute(
           path: '/',
-          builder: (context, state) => const MyHomePage(title: 'Language Learning Home'),
+          builder: (context, state) =>
+              const MyHomePage(title: 'Language Learning Home'),
+        ),
+        GoRoute(
+          path: '/home',
+          builder: (context, state) =>
+              const MyHomePage(title: 'Language Learning Home'),
         ),
         GoRoute(
           path: '/details',
@@ -143,9 +149,9 @@ class _MyHomePageState extends State<MyHomePage> {
               const SizedBox(height: 8),
               Text(
                 '@${user.username}',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey[600],
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
               ),
               const SizedBox(height: 24),
               Card(
@@ -157,9 +163,17 @@ class _MyHomePageState extends State<MyHomePage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _buildStatItem('Level', user.level.toString(), Icons.star),
+                          _buildStatItem(
+                            'Level',
+                            user.level.toString(),
+                            Icons.star,
+                          ),
                           _buildStatItem('XP', user.xp.toString(), Icons.bolt),
-                          _buildStatItem('Streak', '${user.streak} days', Icons.local_fire_department),
+                          _buildStatItem(
+                            'Streak',
+                            '${user.streak} days',
+                            Icons.local_fire_department,
+                          ),
                         ],
                       ),
                     ],
@@ -199,18 +213,9 @@ class _MyHomePageState extends State<MyHomePage> {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
-          ),
-        ),
+        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
       ],
     );
   }
@@ -222,9 +227,7 @@ class DetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Details'),
-      ),
+      appBar: AppBar(title: const Text('Details')),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

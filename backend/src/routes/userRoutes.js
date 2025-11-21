@@ -42,6 +42,7 @@ const loginValidation = [
 // Public routes
 router.post('/register', registerValidation, userController.register);
 router.post('/login', loginValidation, userController.login);
+router.post('/auth/facebook', userController.facebookLogin);
 
 // Protected routes (require authentication)
 router.use(auth); // Apply auth middleware to all routes below

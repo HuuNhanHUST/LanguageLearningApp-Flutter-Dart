@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import '../services/facebook_auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -28,22 +30,85 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    setState(() => _isLoading = true);
+
     final authProvider = context.read<AuthProvider>();
-    
+
     final success = await authProvider.login(
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );
 
-    if (success && mounted) {
-      // Navigate to home screen
-      // This will be updated when we have proper routing
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login successful!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    if (mounted) {
+      setState(() => _isLoading = false);
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Login successful!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Navigate to home screen
+        if (mounted) {
+          context.go('/');
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Login failed. Please check your email and password.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleFacebookLogin() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final userData = await FacebookAuthService.signInWithFacebook();
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+
+        if (userData != null && userData.isNotEmpty) {
+          // Update AuthProvider with user data
+          final authProvider = context.read<AuthProvider>();
+
+          // Manually set authenticated state since we got the data from Facebook service
+          authProvider.setAuthenticatedUser(userData['user']);
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Facebook login successful!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Navigate to home screen using GoRouter
+          if (mounted) {
+            context.go('/');
+          }
+        } else {
+          throw Exception('No user data received');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Facebook login failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -70,16 +135,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Language Learning App',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Sign in to continue',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 48),
@@ -153,7 +218,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.error_outline, color: Colors.red[700]),
+                                Icon(
+                                  Icons.error_outline,
+                                  color: Colors.red[700],
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -174,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Consumer<AuthProvider>(
                     builder: (context, authProvider, child) {
                       final isLoading = authProvider.state == AuthState.loading;
-                      
+
                       return ElevatedButton(
                         onPressed: isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
@@ -203,6 +271,30 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                       );
                     },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Facebook Login Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _handleFacebookLogin,
+                      icon: const Icon(Icons.facebook, size: 20),
+                      label: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Sign in with Facebook'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(
+                          0xFF1877F2,
+                        ), // Facebook blue
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
 
