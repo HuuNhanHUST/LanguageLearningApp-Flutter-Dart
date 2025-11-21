@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class FacebookAuthService {
-  static const String _backendUrl = 'http://10.10.10.124:5000/api';
+  static const String _backendUrl = 'http://10.10.10.124:  git status/api';
   static const _storage = FlutterSecureStorage();
 
   /// Đăng nhập bằng Facebook

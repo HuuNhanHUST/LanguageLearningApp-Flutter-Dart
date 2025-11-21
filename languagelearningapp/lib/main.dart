@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
+import 'features/auth/screens/splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -20,46 +21,55 @@ class MyApp extends StatelessWidget {
       ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
-          return MaterialApp.router(
-            title: 'Language Learning App',
-            theme: ThemeData(
-              colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-              useMaterial3: true,
-            ),
-            routerConfig: _createRouter(authProvider),
+          return StreamBuilder<AuthStatus>(
+            stream: authProvider.authStatusStream,
+            initialData: authProvider.currentStatus,
+            builder: (context, snapshot) {
+              final authStatus = snapshot.data ?? authProvider.currentStatus;
+
+              return MaterialApp.router(
+                title: 'Language Learning App',
+                theme: ThemeData(
+                  colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+                  useMaterial3: true,
+                ),
+                routerConfig: _createRouter(authStatus),
+              );
+            },
           );
         },
       ),
     );
   }
 
-  GoRouter _createRouter(AuthProvider authProvider) {
+  GoRouter _createRouter(AuthStatus authStatus) {
     return GoRouter(
-      initialLocation: '/',
+      initialLocation: '/splash',
       redirect: (context, state) {
-        final isAuthenticated = authProvider.isAuthenticated;
-        final isInitial = authProvider.state == AuthState.initial;
-        final isLoggingIn = state.matchedLocation == '/login';
-        final isRegistering = state.matchedLocation == '/register';
+        final location = state.matchedLocation;
+        final isAuthRoute = location == '/login' || location == '/register';
+        final isSplash = location == '/splash';
 
-        // Wait for initialization
-        if (isInitial) {
-          return null;
+        if (authStatus.isLoading) {
+          return isSplash ? null : '/splash';
         }
 
-        // If not authenticated and not on auth pages, redirect to login
-        if (!isAuthenticated && !isLoggingIn && !isRegistering) {
-          return '/login';
+        if (!authStatus.isAuthenticated) {
+          return isAuthRoute ? null : '/login';
         }
 
-        // If authenticated and on auth pages, redirect to home
-        if (isAuthenticated && (isLoggingIn || isRegistering)) {
-          return '/';
+        // Authenticated users should avoid auth routes and splash
+        if (isSplash || isAuthRoute || location == '/') {
+          return '/home';
         }
 
         return null;
       },
       routes: [
+        GoRoute(
+          path: '/splash',
+          builder: (context, state) => const SplashScreen(),
+        ),
         GoRoute(
           path: '/login',
           builder: (context, state) => const LoginScreen(),
@@ -70,8 +80,7 @@ class MyApp extends StatelessWidget {
         ),
         GoRoute(
           path: '/',
-          builder: (context, state) =>
-              const MyHomePage(title: 'Language Learning Home'),
+          redirect: (context, state) => '/home',
         ),
         GoRoute(
           path: '/home',
@@ -119,6 +128,9 @@ class _MyHomePageState extends State<MyHomePage> {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await authProvider.logout();
+              if (context.mounted) {
+                context.go('/login');
+              }
             },
             tooltip: 'Logout',
           ),
