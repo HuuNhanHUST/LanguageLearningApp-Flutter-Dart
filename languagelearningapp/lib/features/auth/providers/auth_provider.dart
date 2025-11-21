@@ -1,29 +1,57 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 
 enum AuthState { initial, loading, authenticated, unauthenticated, error }
 
+class AuthStatus {
+  final AuthState state;
+  final User? user;
+  final String? errorMessage;
+
+  const AuthStatus({
+    required this.state,
+    this.user,
+    this.errorMessage,
+  });
+
+  bool get isAuthenticated => state == AuthState.authenticated && user != null;
+  bool get isLoading => state == AuthState.initial || state == AuthState.loading;
+}
+
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
+  final StreamController<AuthStatus> _authStatusController =
+      StreamController<AuthStatus>.broadcast();
 
   AuthState _state = AuthState.initial;
   User? _user;
   String? _errorMessage;
 
   AuthProvider({AuthService? authService})
-    : _authService = authService ?? AuthService();
+    : _authService = authService ?? AuthService() {
+    _emitStatus();
+  }
 
   AuthState get state => _state;
   User? get user => _user;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _state == AuthState.authenticated;
+  Stream<AuthStatus> get authStatusStream => _authStatusController.stream;
+  AuthStatus get currentStatus => AuthStatus(
+        state: _state,
+        user: _user,
+        errorMessage: _errorMessage,
+      );
 
   /// Initialize auth state
   Future<void> initialize() async {
     try {
       _state = AuthState.loading;
-      notifyListeners();
+      _errorMessage = null;
+      _notifyStateChanged();
 
       final isLoggedIn = await _authService.isLoggedIn();
 
@@ -38,11 +66,11 @@ class AuthProvider extends ChangeNotifier {
         _state = AuthState.unauthenticated;
       }
 
-      notifyListeners();
+      _notifyStateChanged();
     } catch (e) {
       _state = AuthState.error;
       _errorMessage = e.toString();
-      notifyListeners();
+      _notifyStateChanged();
     }
   }
 
@@ -52,11 +80,11 @@ class AuthProvider extends ChangeNotifier {
       _user = User.fromJson(userData);
       _state = AuthState.authenticated;
       _errorMessage = null;
-      notifyListeners();
+      _notifyStateChanged();
     } catch (e) {
       _state = AuthState.error;
       _errorMessage = e.toString();
-      notifyListeners();
+      _notifyStateChanged();
     }
   }
 
@@ -72,7 +100,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _state = AuthState.loading;
       _errorMessage = null;
-      notifyListeners();
+      _notifyStateChanged();
 
       final authResponse = await _authService.register(
         username: username,
@@ -85,13 +113,13 @@ class AuthProvider extends ChangeNotifier {
 
       _user = authResponse.user;
       _state = AuthState.authenticated;
-      notifyListeners();
+      _notifyStateChanged();
 
       return true;
     } catch (e) {
       _state = AuthState.error;
       _errorMessage = e.toString().replaceAll('Exception: ', '');
-      notifyListeners();
+      _notifyStateChanged();
       return false;
     }
   }
@@ -101,7 +129,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       _state = AuthState.loading;
       _errorMessage = null;
-      notifyListeners();
+      _notifyStateChanged();
 
       final authResponse = await _authService.login(
         email: email,
@@ -110,13 +138,13 @@ class AuthProvider extends ChangeNotifier {
 
       _user = authResponse.user;
       _state = AuthState.authenticated;
-      notifyListeners();
+      _notifyStateChanged();
 
       return true;
     } catch (e) {
       _state = AuthState.error;
       _errorMessage = e.toString().replaceAll('Exception: ', '');
-      notifyListeners();
+      _notifyStateChanged();
       return false;
     }
   }
@@ -125,10 +153,10 @@ class AuthProvider extends ChangeNotifier {
   Future<void> refreshProfile() async {
     try {
       _user = await _authService.getProfile();
-      notifyListeners();
+      _notifyStateChanged();
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
-      notifyListeners();
+      _notifyStateChanged();
     }
   }
 
@@ -149,11 +177,11 @@ class AuthProvider extends ChangeNotifier {
         nativeLanguage: nativeLanguage,
       );
 
-      notifyListeners();
+      _notifyStateChanged();
       return true;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
-      notifyListeners();
+      _notifyStateChanged();
       return false;
     }
   }
@@ -174,7 +202,7 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
-      notifyListeners();
+      _notifyStateChanged();
       return false;
     }
   }
@@ -186,16 +214,33 @@ class AuthProvider extends ChangeNotifier {
       _user = null;
       _state = AuthState.unauthenticated;
       _errorMessage = null;
-      notifyListeners();
+      _notifyStateChanged();
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
-      notifyListeners();
+      _notifyStateChanged();
     }
   }
 
   /// Clear error message
   void clearError() {
     _errorMessage = null;
+    _notifyStateChanged();
+  }
+
+  void _notifyStateChanged() {
+    _emitStatus();
     notifyListeners();
+  }
+
+  void _emitStatus() {
+    if (!_authStatusController.isClosed) {
+      _authStatusController.add(currentStatus);
+    }
+  }
+
+  @override
+  void dispose() {
+    _authStatusController.close();
+    super.dispose();
   }
 }

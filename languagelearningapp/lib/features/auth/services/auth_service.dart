@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/storage_keys.dart';
@@ -187,13 +188,7 @@ class AuthService {
   /// Logout user
   Future<void> logout() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(StorageKeys.accessToken);
-      await prefs.remove(StorageKeys.refreshToken);
-      await prefs.remove(StorageKeys.userData);
-      await prefs.remove(StorageKeys.isLoggedIn);
-      await prefs.remove(StorageKeys.userId);
-      await prefs.remove(StorageKeys.userEmail);
+      await _clearStoredAuthData();
     } catch (e) {
       throw Exception('Logout error: $e');
     }
@@ -203,7 +198,20 @@ class AuthService {
   Future<bool> isLoggedIn() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool(StorageKeys.isLoggedIn) ?? false;
+      final storedToken = prefs.getString(StorageKeys.accessToken);
+      final isMarkedLoggedIn = prefs.getBool(StorageKeys.isLoggedIn) ?? false;
+
+      if (storedToken == null || storedToken.isEmpty) {
+        await _clearStoredAuthData();
+        return false;
+      }
+
+      if (_isTokenExpired(storedToken)) {
+        await _clearStoredAuthData();
+        return false;
+      }
+
+      return isMarkedLoggedIn;
     } catch (e) {
       return false;
     }
@@ -213,7 +221,18 @@ class AuthService {
   Future<String?> getAccessToken() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getString(StorageKeys.accessToken);
+      final token = prefs.getString(StorageKeys.accessToken);
+
+      if (token == null || token.isEmpty) {
+        return null;
+      }
+
+      if (_isTokenExpired(token)) {
+        await _clearStoredAuthData();
+        return null;
+      }
+
+      return token;
     } catch (e) {
       return null;
     }
@@ -255,6 +274,24 @@ class AuthService {
       await prefs.setString(StorageKeys.userData, jsonEncode(user.toJson()));
     } catch (e) {
       throw Exception('Failed to save user data: $e');
+    }
+  }
+
+  Future<void> _clearStoredAuthData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(StorageKeys.accessToken);
+    await prefs.remove(StorageKeys.refreshToken);
+    await prefs.remove(StorageKeys.userData);
+    await prefs.remove(StorageKeys.isLoggedIn);
+    await prefs.remove(StorageKeys.userId);
+    await prefs.remove(StorageKeys.userEmail);
+  }
+
+  bool _isTokenExpired(String token) {
+    try {
+      return JwtDecoder.isExpired(token);
+    } catch (_) {
+      return true;
     }
   }
 }
