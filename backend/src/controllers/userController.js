@@ -1,5 +1,7 @@
 const { validationResult } = require('express-validator');
 const User = require('../models/User');
+const axios = require('axios');
+const crypto = require('crypto');
 
 /**
  * @desc    Register new user
@@ -568,6 +570,145 @@ exports.updateDailyGoal = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to update daily goal',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+/**
+ * @desc    Login with Facebook
+ * @route   POST /api/auth/facebook
+ * @access  Public
+ */
+exports.facebookLogin = async (req, res) => {
+    try {
+        const { facebookToken } = req.body;
+
+        if (!facebookToken) {
+            return res.status(400).json({
+                success: false,
+                message: 'Facebook token is required'
+            });
+        }
+
+        console.log('🔐 Facebook Login Request');
+        console.log('Token received:', facebookToken.substring(0, 20) + '...');
+
+        // Verify token with Facebook Graph API
+        let facebookUser;
+        try {
+            console.log('📱 Calling Facebook Graph API...');
+            const response = await axios.get(
+                `https://graph.facebook.com/me`,
+                {
+                    params: {
+                        fields: 'id,name,picture,first_name,last_name',
+                        access_token: facebookToken
+                    }
+                }
+            );
+            facebookUser = response.data;
+            console.log('✅ Facebook API Response:', facebookUser);
+        } catch (error) {
+            console.error('❌ Facebook token verification failed:', error.response?.data || error.message);
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid Facebook token',
+                error: error.response?.data?.error?.message
+            });
+        }
+
+        // Check if user already exists by Facebook ID
+        let user = await User.findOne({
+            facebookId: facebookUser.id
+        });
+
+        if (user) {
+            // Existing user - just generate tokens
+            const accessToken = user.generateAccessToken();
+            const refreshToken = user.generateRefreshToken();
+            await user.save();
+
+            return res.status(200).json({
+                success: true,
+                message: 'Facebook login successful',
+                data: {
+                    user: user.getPublicProfile(),
+                    accessToken,
+                    refreshToken
+                }
+            });
+        }
+
+        // Check if user exists by email
+        if (facebookUser.email) {
+            user = await User.findOne({ email: facebookUser.email });
+            
+            if (user) {
+                // Link Facebook account to existing user
+                user.facebookId = facebookUser.id;
+                user.provider = 'facebook';
+                await user.save();
+
+                const accessToken = user.generateAccessToken();
+                const refreshToken = user.generateRefreshToken();
+                await user.save();
+
+                return res.status(200).json({
+                    success: true,
+                    message: 'Facebook login successful',
+                    data: {
+                        user: user.getPublicProfile(),
+                        accessToken,
+                        refreshToken
+                    }
+                });
+            }
+        }
+
+        // Create new user from Facebook login
+        const username = `fb_${facebookUser.id.substring(0, 8)}`;
+        const email = facebookUser.email || `${username}@facebook.local`;
+        const firstName = facebookUser.first_name || facebookUser.name || 'Facebook';
+        const lastName = facebookUser.last_name || 'User';
+        
+        // Generate random password for social login
+        const crypto = require('crypto');
+        const randomPassword = crypto.randomBytes(16).toString('hex');
+
+        user = new User({
+            username,
+            email,
+            password: randomPassword,
+            firstName,
+            lastName,
+            facebookId: facebookUser.id,
+            provider: 'facebook',
+            avatar: facebookUser.picture?.data?.url || null
+        });
+
+        await user.save();
+
+        // Generate tokens
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+        await user.save();
+
+        res.status(201).json({
+            success: true,
+            message: 'User created and logged in with Facebook successfully',
+            data: {
+                user: user.getPublicProfile(),
+                accessToken,
+                refreshToken
+            }
+        });
+
+    } catch (error) {
+        console.error('Facebook login error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Facebook login failed',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }

@@ -41,6 +41,19 @@ const userSchema = new mongoose.Schema({
         default: null
     },
     
+    // Social Login Fields
+    facebookId: {
+        type: String,
+        unique: true,
+        sparse: true, // Allow multiple null values
+        default: null
+    },
+    provider: {
+        type: String,
+        enum: ['local', 'facebook', 'google'],
+        default: 'local'
+    },
+    
     // Language Learning Specific Fields
     nativeLanguage: {
         type: String,

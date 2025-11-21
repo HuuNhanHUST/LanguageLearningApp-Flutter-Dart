@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Language Learning App</string>
+    
+    <!-- Facebook SDK -->
+    <string name="facebook_app_id">1341038093797292</string>
+    <string name="facebook_client_token">561aebb933592ac9ec6b64eeeed2bbb8</string>
+</resources>
