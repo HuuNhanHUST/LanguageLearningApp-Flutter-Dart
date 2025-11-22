@@ -2,9 +2,9 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../core/constants/api_constants.dart';
 
 class FacebookAuthService {
-  static const String _backendUrl = 'http://10.10.10.124:  git status/api';
   static const _storage = FlutterSecureStorage();
 
   /// Đăng nhập bằng Facebook
@@ -52,7 +52,7 @@ class FacebookAuthService {
     try {
       final response = await http
           .post(
-            Uri.parse('$_backendUrl/users/auth/facebook'),
+            Uri.parse('${ApiConstants.baseUrl}/users/auth/facebook'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({'facebookToken': facebookToken}),
           )

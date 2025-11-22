@@ -245,11 +245,15 @@ userSchema.methods.getPublicProfile = function() {
         lastName: this.lastName,
         avatar: this.avatar,
         nativeLanguage: this.nativeLanguage,
-        learningLanguages: this.learningLanguages,
+        learningLanguages: this.learningLanguages || [],
         xp: this.xp,
         level: this.level,
         streak: this.streak,
-        preferences: this.preferences,
+        preferences: {
+            dailyGoal: this.preferences?.dailyGoal || 10,
+            notifications: this.preferences?.notifications !== false,
+            soundEffects: this.preferences?.soundEffects !== false
+        },
         createdAt: this.createdAt
     };
 };
