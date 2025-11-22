@@ -6,6 +6,7 @@ import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
 import 'features/auth/screens/splash_screen.dart';
+import 'features/home/screens/man_hinh_chinh.dart';
 import 'screens/audio_recorder_screen.dart';
 
 void main() {
@@ -91,6 +92,10 @@ class MyApp extends StatelessWidget {
         GoRoute(path: '/', redirect: (context, state) => '/home'),
         GoRoute(
           path: '/home',
+          builder: (context, state) => const ManHinhChinh(),
+        ),
+        GoRoute(
+          path: '/old-home',
           builder: (context, state) =>
               const MyHomePage(title: 'Language Learning Home'),
         ),

@@ -167,6 +167,14 @@ class AudioRecorderNotifier extends StateNotifier<AudioRecorderState> {
     state = state.copyWith(errorMessage: null);
   }
 
+  /// Clear audio path (for re-recording)
+  void clearAudioPath() {
+    state = state.copyWith(
+      audioPath: null,
+      errorMessage: null,
+    );
+  }
+
   /// Dispose recorder
   @override
   void dispose() {
