@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../services/facebook_auth_service.dart';
+import '../services/google_auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -292,6 +293,60 @@ class _LoginScreenState extends State<LoginScreen> {
                           0xFF1877F2,
                         ), // Facebook blue
                         foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Google Login Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading
+                          ? null
+                          : () async {
+                              setState(() => _isLoading = true);
+                              try {
+                                final userData = await GoogleAuthService.signInWithGoogle();
+                                if (mounted) setState(() => _isLoading = false);
+
+                                if (userData != null && userData.isNotEmpty) {
+                                  final authProvider = context.read<AuthProvider>();
+                                  authProvider.setAuthenticatedUser(userData['user']);
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Google login successful!'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+
+                                  if (mounted) context.go('/');
+                                } else {
+                                  throw Exception('No user data received from Google');
+                                }
+                              } catch (e) {
+                                if (mounted) setState(() => _isLoading = false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Google login failed: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            },
+                      icon: const Icon(Icons.g_mobiledata, size: 20),
+                      label: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Sign in with Google'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),

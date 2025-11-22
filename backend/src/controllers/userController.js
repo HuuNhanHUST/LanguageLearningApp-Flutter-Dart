@@ -2,6 +2,7 @@ const { validationResult } = require('express-validator');
 const User = require('../models/User');
 const axios = require('axios');
 const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 
 /**
  * @desc    Register new user
@@ -709,6 +710,132 @@ exports.facebookLogin = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Facebook login failed',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+/**
+ * @desc    Login with Google
+ * @route   POST /api/auth/google
+ * @access  Public
+ */
+exports.googleLogin = async (req, res) => {
+    try {
+        const { googleToken } = req.body;
+
+        if (!googleToken) {
+            return res.status(400).json({
+                success: false,
+                message: 'Google token is required'
+            });
+        }
+
+        console.log('🔐 Google Login Request');
+
+        const clientId = process.env.GOOGLE_CLIENT_ID;
+        if (!clientId) {
+            console.error('Missing GOOGLE_CLIENT_ID in environment');
+            return res.status(500).json({ success: false, message: 'Server not configured for Google sign-in' });
+        }
+
+        const client = new OAuth2Client(clientId);
+        let payload;
+        try {
+            const ticket = await client.verifyIdToken({ idToken: googleToken, audience: clientId });
+            payload = ticket.getPayload();
+            console.log('✅ Google token verified:', { sub: payload.sub, email: payload.email });
+        } catch (err) {
+            console.error('❌ Google token verification failed:', err.message || err);
+            return res.status(401).json({ success: false, message: 'Invalid Google token' });
+        }
+
+        // payload contains user info
+        const googleId = payload.sub;
+
+        // Check if user already exists by Google ID
+        let user = await User.findOne({ googleId });
+
+        if (user) {
+            const accessToken = user.generateAccessToken();
+            const refreshToken = user.generateRefreshToken();
+            await user.save();
+
+            return res.status(200).json({
+                success: true,
+                message: 'Google login successful',
+                data: {
+                    user: user.getPublicProfile(),
+                    accessToken,
+                    refreshToken
+                }
+            });
+        }
+
+        // If email exists, link to existing user
+        if (payload.email) {
+            user = await User.findOne({ email: payload.email });
+            if (user) {
+                user.googleId = googleId;
+                user.provider = 'google';
+                await user.save();
+
+                const accessToken = user.generateAccessToken();
+                const refreshToken = user.generateRefreshToken();
+                await user.save();
+
+                return res.status(200).json({
+                    success: true,
+                    message: 'Google login successful',
+                    data: {
+                        user: user.getPublicProfile(),
+                        accessToken,
+                        refreshToken
+                    }
+                });
+            }
+        }
+
+        // Create new user
+        const username = `gp_${googleId.substring(0, 8)}`;
+        const email = payload.email || `${username}@google.local`;
+        const firstName = payload.given_name || payload.name || 'Google';
+        const lastName = payload.family_name || '';
+
+        const randomPassword = crypto.randomBytes(16).toString('hex');
+
+        user = new User({
+            username,
+            email,
+            password: randomPassword,
+            firstName,
+            lastName,
+            googleId,
+            provider: 'google',
+            avatar: payload.picture || null
+        });
+
+        await user.save();
+
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+        await user.save();
+
+        res.status(201).json({
+            success: true,
+            message: 'User created and logged in with Google successfully',
+            data: {
+                user: user.getPublicProfile(),
+                accessToken,
+                refreshToken
+            }
+        });
+
+    } catch (error) {
+        console.error('Google login error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Google login failed',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }

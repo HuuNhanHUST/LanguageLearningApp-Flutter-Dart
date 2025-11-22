@@ -48,6 +48,12 @@ const userSchema = new mongoose.Schema({
         sparse: true, // Allow multiple null values
         default: null
     },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true,
+        default: null
+    },
     provider: {
         type: String,
         enum: ['local', 'facebook', 'google'],
