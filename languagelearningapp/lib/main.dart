@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' as provider;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
 import 'features/auth/screens/splash_screen.dart';
+import 'screens/audio_recorder_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -15,11 +17,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
+    return provider.MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()..initialize()),
+        provider.ChangeNotifierProvider(
+          create: (_) => AuthProvider()..initialize(),
+        ),
       ],
-      child: Consumer<AuthProvider>(
+      child: provider.Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
           return StreamBuilder<AuthStatus>(
             stream: authProvider.authStatusStream,
@@ -93,6 +97,10 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: '/details',
           builder: (context, state) => const DetailsPage(),
+        ),
+        GoRoute(
+          path: '/audio-recorder',
+          builder: (context, state) => const AudioRecorderScreen(),
         ),
       ],
     );
@@ -209,6 +217,18 @@ class _MyHomePageState extends State<MyHomePage> {
               },
               icon: const Icon(Icons.arrow_forward),
               label: const Text('Go to Details'),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () {
+                context.go('/audio-recorder');
+              },
+              icon: const Icon(Icons.mic),
+              label: const Text('Audio Recorder'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
