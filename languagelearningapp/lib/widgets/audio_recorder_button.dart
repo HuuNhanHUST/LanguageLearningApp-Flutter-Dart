@@ -36,12 +36,8 @@ class AudioRecorderButton extends ConsumerWidget {
       });
     }
 
-    // Notify when recording is complete
-    if (!recorderState.isRecording && recorderState.audioPath != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        onRecordingComplete?.call();
-      });
-    }
+    // Removed automatic callback to prevent spam notifications
+    // Parent widget will handle notification manually
 
     return GestureDetector(
       onTap: () async {
