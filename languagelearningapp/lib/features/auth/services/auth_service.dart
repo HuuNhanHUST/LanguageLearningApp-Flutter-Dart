@@ -8,7 +8,7 @@ import '../models/user_model.dart';
 
 class AuthService {
   final http.Client _client;
-  
+
   AuthService({http.Client? client}) : _client = client ?? http.Client();
 
   /// Register a new user
@@ -21,6 +21,7 @@ class AuthService {
     String? nativeLanguage,
   }) async {
     try {
+      print('📝 Register Request to: ${ApiConstants.register}');
       final response = await _client.post(
         Uri.parse(ApiConstants.register),
         headers: ApiConstants.getHeaders(),
@@ -34,20 +35,27 @@ class AuthService {
         }),
       );
 
+      print('📝 Register Response Status: ${response.statusCode}');
+      print('📝 Register Response Body: ${response.body}');
+
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
+        if (data['success'] != true) {
+          throw Exception(data['message'] ?? 'Registration failed');
+        }
         final authResponse = AuthResponse.fromJson(data['data']);
-        
+
         // Save tokens and user data
         await _saveAuthData(authResponse);
-        
+
         return authResponse;
       } else {
         final error = jsonDecode(response.body);
         throw Exception(error['message'] ?? 'Registration failed');
       }
     } catch (e) {
-      throw Exception('Registration error: $e');
+      print('❌ Registration error: $e');
+      rethrow;
     }
   }
 
@@ -57,29 +65,34 @@ class AuthService {
     required String password,
   }) async {
     try {
+      print('🔐 Login Request to: ${ApiConstants.login}');
       final response = await _client.post(
         Uri.parse(ApiConstants.login),
         headers: ApiConstants.getHeaders(),
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+        body: jsonEncode({'email': email, 'password': password}),
       );
+
+      print('🔐 Login Response Status: ${response.statusCode}');
+      print('🔐 Login Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        if (data['success'] != true) {
+          throw Exception(data['message'] ?? 'Login failed');
+        }
         final authResponse = AuthResponse.fromJson(data['data']);
-        
+
         // Save tokens and user data
         await _saveAuthData(authResponse);
-        
+
         return authResponse;
       } else {
         final error = jsonDecode(response.body);
         throw Exception(error['message'] ?? 'Login failed');
       }
     } catch (e) {
-      throw Exception('Login error: $e');
+      print('❌ Login error: $e');
+      rethrow;
     }
   }
 
@@ -136,10 +149,10 @@ class AuthService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final user = User.fromJson(data['data']['user']);
-        
+
         // Update stored user data
         await _saveUserData(user);
-        
+
         return user;
       } else {
         final error = jsonDecode(response.body);
@@ -174,8 +187,14 @@ class AuthService {
         final data = jsonDecode(response.body);
         // Update tokens after password change
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(StorageKeys.accessToken, data['data']['accessToken']);
-        await prefs.setString(StorageKeys.refreshToken, data['data']['refreshToken']);
+        await prefs.setString(
+          StorageKeys.accessToken,
+          data['data']['accessToken'],
+        );
+        await prefs.setString(
+          StorageKeys.refreshToken,
+          data['data']['refreshToken'],
+        );
       } else {
         final error = jsonDecode(response.body);
         throw Exception(error['message'] ?? 'Failed to change password');
@@ -257,8 +276,14 @@ class AuthService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(StorageKeys.accessToken, authResponse.accessToken);
-      await prefs.setString(StorageKeys.refreshToken, authResponse.refreshToken);
-      await prefs.setString(StorageKeys.userData, jsonEncode(authResponse.user.toJson()));
+      await prefs.setString(
+        StorageKeys.refreshToken,
+        authResponse.refreshToken,
+      );
+      await prefs.setString(
+        StorageKeys.userData,
+        jsonEncode(authResponse.user.toJson()),
+      );
       await prefs.setBool(StorageKeys.isLoggedIn, true);
       await prefs.setString(StorageKeys.userId, authResponse.user.id);
       await prefs.setString(StorageKeys.userEmail, authResponse.user.email);

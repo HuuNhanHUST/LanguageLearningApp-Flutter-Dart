@@ -30,7 +30,9 @@ class MyApp extends StatelessWidget {
               return MaterialApp.router(
                 title: 'Language Learning App',
                 theme: ThemeData(
-                  colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+                  colorScheme: ColorScheme.fromSeed(
+                    seedColor: Colors.deepPurple,
+                  ),
                   useMaterial3: true,
                 ),
                 routerConfig: _createRouter(authStatus),
@@ -50,16 +52,20 @@ class MyApp extends StatelessWidget {
         final isAuthRoute = location == '/login' || location == '/register';
         final isSplash = location == '/splash';
 
-        if (authStatus.isLoading) {
+        // Show splash only during initial loading
+        if (authStatus.state == AuthState.initial ||
+            authStatus.state == AuthState.loading) {
           return isSplash ? null : '/splash';
         }
 
+        // User is not authenticated - redirect to login
         if (!authStatus.isAuthenticated) {
           return isAuthRoute ? null : '/login';
         }
 
-        // Authenticated users should avoid auth routes and splash
-        if (isSplash || isAuthRoute || location == '/') {
+        // User is authenticated - redirect away from auth routes and splash
+        if (authStatus.isAuthenticated &&
+            (isSplash || isAuthRoute || location == '/')) {
           return '/home';
         }
 
@@ -78,10 +84,7 @@ class MyApp extends StatelessWidget {
           path: '/register',
           builder: (context, state) => const RegisterScreen(),
         ),
-        GoRoute(
-          path: '/',
-          redirect: (context, state) => '/home',
-        ),
+        GoRoute(path: '/', redirect: (context, state) => '/home'),
         GoRoute(
           path: '/home',
           builder: (context, state) =>
