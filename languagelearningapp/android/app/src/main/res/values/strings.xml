@@ -5,4 +5,6 @@
     <!-- Facebook SDK -->
     <string name="facebook_app_id">1341038093797292</string>
     <string name="facebook_client_token">561aebb933592ac9ec6b64eeeed2bbb8</string>
+    <!-- Web client ID for Google Sign-In (used to request idToken on Android) -->
+    <string name="default_web_client_id">585456694594-elums4flgqih85m820rrq3ncs37042bs.apps.googleusercontent.com</string>
 </resources>

@@ -16,6 +16,10 @@
         <meta-data
             android:name="com.facebook.sdk.ClientToken"
             android:value="@string/facebook_client_token" />
+        <!-- Allow GoogleSignIn to read the web client id from resources -->
+        <meta-data
+            android:name="com.google.android.gms.auth.api.signin.SERVER_CLIENT_ID"
+            android:value="@string/default_web_client_id" />
         
         <activity
             android:name=".MainActivity"
