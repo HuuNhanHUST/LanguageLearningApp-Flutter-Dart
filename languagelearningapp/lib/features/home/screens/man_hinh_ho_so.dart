@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../auth/services/auth_service.dart';
 import '../../auth/models/user_model.dart';
+import '../../auth/providers/auth_provider.dart';
 
 /// Màn hình Hồ sơ người dùng
 /// Hiển thị thông tin cá nhân, cài đặt
@@ -363,8 +366,25 @@ class ManHinhHoSo extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              await authService.logout();
-              Navigator.pushReplacementNamed(context, '/auth');
+              try {
+                // Đăng xuất qua AuthService
+                await authService.logout();
+                
+                // Cập nhật AuthProvider
+                final authProvider = context.read<AuthProvider>();
+                authProvider.logout();
+                
+                // Chuyển về trang login
+                if (context.mounted) {
+                  context.go('/login');
+                }
+              } catch (e) {
+                print('Logout error: $e');
+                // Vẫn chuyển về login nếu có lỗi
+                if (context.mounted) {
+                  context.go('/login');
+                }
+              }
             },
             child: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
           ),
