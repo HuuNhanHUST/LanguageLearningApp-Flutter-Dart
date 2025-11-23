@@ -47,5 +47,9 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>We need microphone access to record audio for language learning.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>We need camera access to scan text from images.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need photo library access to select images for text scanning.</string>
 </dict>
 </plist>

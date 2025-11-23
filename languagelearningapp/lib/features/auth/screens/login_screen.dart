@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import '../services/auth_service.dart';
 import '../services/facebook_auth_service.dart';
 import '../services/google_auth_service.dart';
 
@@ -77,10 +78,12 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _isLoading = false);
 
         if (userData != null && userData.isNotEmpty) {
+          // Save to SharedPreferences using AuthService
+          final authService = AuthService();
+          await authService.saveAuthDataFromSocial(userData);
+
           // Update AuthProvider with user data
           final authProvider = context.read<AuthProvider>();
-
-          // Manually set authenticated state since we got the data from Facebook service
           authProvider.setAuthenticatedUser(userData['user']);
 
           // Show success message
@@ -308,12 +311,22 @@ class _LoginScreenState extends State<LoginScreen> {
                           : () async {
                               setState(() => _isLoading = true);
                               try {
-                                final userData = await GoogleAuthService.signInWithGoogle();
+                                final userData =
+                                    await GoogleAuthService.signInWithGoogle();
                                 if (mounted) setState(() => _isLoading = false);
 
                                 if (userData != null && userData.isNotEmpty) {
-                                  final authProvider = context.read<AuthProvider>();
-                                  authProvider.setAuthenticatedUser(userData['user']);
+                                  // Save to SharedPreferences using AuthService
+                                  final authService = AuthService();
+                                  await authService.saveAuthDataFromSocial(
+                                    userData,
+                                  );
+
+                                  final authProvider = context
+                                      .read<AuthProvider>();
+                                  authProvider.setAuthenticatedUser(
+                                    userData['user'],
+                                  );
 
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
@@ -324,7 +337,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
                                   if (mounted) context.go('/');
                                 } else {
-                                  throw Exception('No user data received from Google');
+                                  throw Exception(
+                                    'No user data received from Google',
+                                  );
                                 }
                               } catch (e) {
                                 if (mounted) setState(() => _isLoading = false);

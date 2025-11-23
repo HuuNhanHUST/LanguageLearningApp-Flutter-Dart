@@ -1,12 +1,26 @@
 import 'package:flutter/material.dart';
+import '../../auth/services/auth_service.dart';
+import '../../auth/models/user_model.dart';
 
 /// Màn hình Hồ sơ người dùng
 /// Hiển thị thông tin cá nhân, cài đặt
 class ManHinhHoSo extends StatelessWidget {
   const ManHinhHoSo({super.key});
 
+  Future<User?> _loadUserProfile(AuthService authService) async {
+    try {
+      // Thử lấy từ API trước
+      return await authService.getProfile();
+    } catch (e) {
+      // Nếu lỗi (ví dụ token hết hạn), fallback về stored user
+      return await authService.getStoredUser();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final authService = AuthService();
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -20,10 +34,27 @@ class ManHinhHoSo extends StatelessWidget {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                // Header với avatar và thông tin
-                _xayDungHeader(),
+                // Header với avatar và thông tin (dựa trên dữ liệu thực)
+                FutureBuilder<User?>(
+                  future: _loadUserProfile(authService),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.all(20),
+                        child: SizedBox(
+                          height: 160,
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                      );
+                    }
+
+                    final user = snapshot.data;
+                    return _xayDungHeader(user, context);
+                  },
+                ),
+
                 const SizedBox(height: 30),
-                
+
                 // Container trắng chứa nội dung
                 Container(
                   width: double.infinity,
@@ -39,9 +70,15 @@ class ManHinhHoSo extends StatelessWidget {
                     child: Column(
                       children: [
                         // Thành tích
-                        _xayDungThanhTich(),
+                        FutureBuilder<User?>(
+                          future: _loadUserProfile(authService),
+                          builder: (context, snapshot) {
+                            final user = snapshot.data;
+                            return _xayDungThanhTich(user);
+                          },
+                        ),
                         const SizedBox(height: 30),
-                        
+
                         // Cài đặt
                         _xayDungCaiDat(context),
                       ],
@@ -57,7 +94,10 @@ class ManHinhHoSo extends StatelessWidget {
   }
 
   /// Xây dựng header với avatar và thông tin user
-  Widget _xayDungHeader() {
+  Widget _xayDungHeader(User? user, BuildContext context) {
+    final displayName = user != null ? user.fullName : 'Bạn chưa đăng nhập';
+    final email = user?.email ?? '';
+
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -77,31 +117,45 @@ class ManHinhHoSo extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Icon(Icons.person, size: 50, color: Color(0xFF6C63FF)),
+            child: user?.avatar != null
+                ? ClipOval(
+                    child: Image.network(
+                      user!.avatar!,
+                      fit: BoxFit.cover,
+                      width: 100,
+                      height: 100,
+                      errorBuilder: (c, e, s) => const Icon(
+                        Icons.person,
+                        size: 50,
+                        color: Color(0xFF6C63FF),
+                      ),
+                    ),
+                  )
+                : const Icon(Icons.person, size: 50, color: Color(0xFF6C63FF)),
           ),
           const SizedBox(height: 15),
-          
+
           // Tên user
-          const Text(
-            'Nguyễn Văn A',
-            style: TextStyle(
+          Text(
+            displayName,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 5),
-          
+
           // Email
           Text(
-            'nguyenvana@example.com',
+            email,
             style: TextStyle(
               color: Colors.white.withOpacity(0.7),
               fontSize: 14,
             ),
           ),
           const SizedBox(height: 15),
-          
+
           // Cấp độ
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -116,14 +170,14 @@ class ManHinhHoSo extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.star, color: Colors.white, size: 20),
-                SizedBox(width: 8),
+                const Icon(Icons.star, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
                 Text(
-                  'Level 12 - Intermediate',
-                  style: TextStyle(
+                  user != null ? 'Level ${user.level}' : 'Chưa có cấp độ',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -138,11 +192,15 @@ class ManHinhHoSo extends StatelessWidget {
   }
 
   /// Xây dựng section thành tích
-  Widget _xayDungThanhTich() {
+  Widget _xayDungThanhTich(User? user) {
+    final medals = user != null ? '${user.streak}' : '0';
+    final goals = user != null ? '${user.preferences.dailyGoal}' : '0';
+    final points = user != null ? '${user.xp}' : '0';
+
     final cacThanhTich = [
-      {'icon': '🏆', 'ten': 'Huy chương', 'soLuong': '24'},
-      {'icon': '🎯', 'ten': 'Mục tiêu', 'soLuong': '18'},
-      {'icon': '⭐', 'ten': 'Điểm thưởng', 'soLuong': '3,420'},
+      {'icon': '🏆', 'ten': 'Huy chương', 'soLuong': medals},
+      {'icon': '🎯', 'ten': 'Mục tiêu', 'soLuong': goals},
+      {'icon': '⭐', 'ten': 'Điểm thưởng', 'soLuong': points},
     ];
 
     return Column(
@@ -184,10 +242,7 @@ class ManHinhHoSo extends StatelessWidget {
                   const SizedBox(height: 5),
                   Text(
                     thanhTich['ten']!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -201,12 +256,28 @@ class ManHinhHoSo extends StatelessWidget {
   /// Xây dựng danh sách cài đặt
   Widget _xayDungCaiDat(BuildContext context) {
     final cacTuyChon = [
-      {'icon': Icons.edit, 'ten': 'Chỉnh sửa hồ sơ', 'mau': const Color(0xFF6C63FF)},
-      {'icon': Icons.notifications, 'ten': 'Thông báo', 'mau': const Color(0xFF4CAF50)},
-      {'icon': Icons.language, 'ten': 'Ngôn ngữ học', 'mau': const Color(0xFFFF9800)},
+      {
+        'icon': Icons.edit,
+        'ten': 'Chỉnh sửa hồ sơ',
+        'mau': const Color(0xFF6C63FF),
+      },
+      {
+        'icon': Icons.notifications,
+        'ten': 'Thông báo',
+        'mau': const Color(0xFF4CAF50),
+      },
+      {
+        'icon': Icons.language,
+        'ten': 'Ngôn ngữ học',
+        'mau': const Color(0xFFFF9800),
+      },
       {'icon': Icons.lock, 'ten': 'Bảo mật', 'mau': const Color(0xFFE91E63)},
       {'icon': Icons.help, 'ten': 'Trợ giúp', 'mau': const Color(0xFF00BCD4)},
-      {'icon': Icons.logout, 'ten': 'Đăng xuất', 'mau': const Color(0xFFF44336)},
+      {
+        'icon': Icons.logout,
+        'ten': 'Đăng xuất',
+        'mau': const Color(0xFFF44336),
+      },
     ];
 
     return Column(
@@ -228,9 +299,10 @@ class ManHinhHoSo extends StatelessWidget {
               color: Colors.transparent,
               child: InkWell(
                 onTap: () {
-                  // Xử lý khi nhấn vào tùy chọn
                   if (tuyChon['ten'] == 'Đăng xuất') {
                     _xuLyDangXuat(context);
+                  } else if (tuyChon['ten'] == 'Chỉnh sửa hồ sơ') {
+                    Navigator.pushNamed(context, '/profile/edit');
                   }
                 },
                 borderRadius: BorderRadius.circular(10),
@@ -263,10 +335,7 @@ class ManHinhHoSo extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const Icon(
-                        Icons.chevron_right,
-                        color: Colors.grey,
-                      ),
+                      const Icon(Icons.chevron_right, color: Colors.grey),
                     ],
                   ),
                 ),
@@ -279,7 +348,8 @@ class ManHinhHoSo extends StatelessWidget {
   }
 
   /// Xử lý đăng xuất
-  void _xuLyDangXuat(BuildContext context) {
+  void _xuLyDangXuat(BuildContext context) async {
+    final authService = AuthService();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -291,15 +361,12 @@ class ManHinhHoSo extends StatelessWidget {
             child: const Text('Hủy'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // TODO: Thực hiện đăng xuất và quay về màn hình login
+              await authService.logout();
               Navigator.pushReplacementNamed(context, '/auth');
             },
-            child: const Text(
-              'Đăng xuất',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

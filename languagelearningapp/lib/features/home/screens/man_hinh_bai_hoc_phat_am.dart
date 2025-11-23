@@ -5,7 +5,6 @@ import 'package:flutter_sound/flutter_sound.dart';
 import '../../../providers/audio_recorder_provider.dart';
 import '../../../widgets/audio_recorder_button.dart';
 import '../../../screens/audio_files_screen.dart';
-import '../../../utils/audio_file_manager.dart';
 
 /// Màn hình Bài học Phát âm
 /// Cho phép học và thực hành phát âm với ghi âm
@@ -20,7 +19,8 @@ class ManHinhBaiHocPhatAm extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<ManHinhBaiHocPhatAm> createState() => _ManHinhBaiHocPhatAmState();
+  ConsumerState<ManHinhBaiHocPhatAm> createState() =>
+      _ManHinhBaiHocPhatAmState();
 }
 
 class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
@@ -28,7 +28,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
   late FlutterSoundPlayer _player;
   bool _isPlaying = false;
   String? _previousAudioPath; // Để detect khi nào có file ghi âm MỚI
-  
+
   @override
   void initState() {
     super.initState();
@@ -75,7 +75,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
       }
       return;
     }
-    
+
     // Hiển thị dialog xác nhận
     final result = await showDialog<bool>(
       context: context,
@@ -98,13 +98,8 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text(
-              'Xóa',
-              style: TextStyle(color: Colors.white),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Xóa', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -113,53 +108,37 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
     // Nếu xác nhận xóa
     if (result == true) {
       try {
-        // XÓA FILE THẬT TỪ DISK (dùng AudioFileManager)
-        final success = await AudioFileManager.deleteAudioFile(file);
-        
-        if (success) {
-          // Dừng phát nếu đang phát
-          if (_isPlaying) {
-            await _player.stopPlayer();
-          }
-          
-          // QUAN TRỌNG: Reset state TRƯỚC để UI biết sẽ thay đổi
-          setState(() {
-            _isPlaying = false;
-            _previousAudioPath = null; // Reset để box xanh biến mất
-          });
-          
-          // SAU ĐÓ mới clear Provider (trigger rebuild)
-          ref.read(audioRecorderProvider.notifier).clearAudioPath();
-          
-          // Hiển thị thông báo thành công
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('✅ Đã xóa file ghi âm thành công'),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-        } else {
-          // Lỗi xóa file
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('❌ Không thể xóa file'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
+        // Dừng phát nếu đang phát
+        if (_isPlaying) {
+          await _player.stopPlayer();
+          setState(() => _isPlaying = false);
+        }
+
+        // XÓA FILE VÀ RESET STATE qua Provider (method mới)
+        await ref
+            .read(audioRecorderProvider.notifier)
+            .deleteAudioFile(audioPath);
+
+        // Reset local state
+        setState(() {
+          _previousAudioPath = null;
+        });
+
+        // Hiển thị thông báo thành công
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Đã xóa file ghi âm thành công'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
         }
       } catch (e) {
         // Lỗi exception
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ Lỗi: $e'),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text('❌ Lỗi: $e'), backgroundColor: Colors.red),
           );
         }
       }
@@ -185,7 +164,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
         }
         return;
       }
-      
+
       if (_isPlaying) {
         await _player.stopPlayer();
         setState(() => _isPlaying = false);
@@ -201,13 +180,13 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi phát audio: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi phát audio: $e')));
       }
     }
   }
-  
+
   // Danh sách các từ/câu cần luyện phát âm
   final List<Map<String, String>> _cacBaiTap = [
     {
@@ -227,7 +206,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
       }
       // XÓA AUDIO STATE TRƯỚC KHI setState (QUAN TRỌNG!)
       ref.read(audioRecorderProvider.notifier).clearAudioPath();
-      
+
       // SAU ĐÓ mới setState để chuyển trang
       setState(() {
         _buocHienTai++;
@@ -249,7 +228,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
       }
       // XÓA AUDIO STATE TRƯỚC KHI setState (QUAN TRỌNG!)
       ref.read(audioRecorderProvider.notifier).clearAudioPath();
-      
+
       // SAU ĐÓ mới setState để chuyển trang
       setState(() {
         _buocHienTai--;
@@ -292,7 +271,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
             children: [
               // Header với nút back và tiến độ
               _xayDungHeader(),
-              
+
               // Nội dung bài học
               Expanded(
                 child: SingleChildScrollView(
@@ -302,15 +281,15 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
                       // Từ cần học
                       _xayDungTheTu(baiTapHienTai),
                       const SizedBox(height: 30),
-                      
+
                       // Hướng dẫn
                       _xayDungHuongDan(baiTapHienTai),
                       const SizedBox(height: 30),
-                      
+
                       // Khu vực ghi âm
                       _xayDungKhuVucGhiAm(audioState),
                       const SizedBox(height: 30),
-                      
+
                       // Các nút điều khiển
                       _xayDungCacNutDieuKhien(),
                     ],
@@ -530,8 +509,8 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
   /// Xây dựng khu vực ghi âm
   Widget _xayDungKhuVucGhiAm(AudioRecorderState audioState) {
     // Hiển thông báo CHỈ KHI audioPath thay đổi từ null -> có giá trị
-    if (!audioState.isRecording && 
-        audioState.audioPath != null && 
+    if (!audioState.isRecording &&
+        audioState.audioPath != null &&
         audioState.audioPath != _previousAudioPath) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -573,9 +552,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
           ),
           const SizedBox(height: 20),
           // Audio Recorder Button (không còn callback tự động)
-          AudioRecorderButton(
-            size: 100,
-          ),
+          AudioRecorderButton(size: 100),
           const SizedBox(height: 20),
           Text(
             audioState.isRecording
@@ -584,7 +561,9 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
             style: TextStyle(
               fontSize: 16,
               color: audioState.isRecording ? Colors.red : Colors.grey[600],
-              fontWeight: audioState.isRecording ? FontWeight.bold : FontWeight.normal,
+              fontWeight: audioState.isRecording
+                  ? FontWeight.bold
+                  : FontWeight.normal,
             ),
           ),
           // Hiển thị thông tin file đã ghi
@@ -689,7 +668,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
           )
         else
           const SizedBox.shrink(),
-        
+
         // Nút tiếp theo / hoàn thành
         ElevatedButton.icon(
           onPressed: _chuyenBaiTapTiepTheo,
@@ -699,9 +678,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
                 : Icons.check,
           ),
           label: Text(
-            _buocHienTai < _cacBaiTap.length - 1
-                ? 'Tiếp theo'
-                : 'Hoàn thành',
+            _buocHienTai < _cacBaiTap.length - 1 ? 'Tiếp theo' : 'Hoàn thành',
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF4CAF50),
