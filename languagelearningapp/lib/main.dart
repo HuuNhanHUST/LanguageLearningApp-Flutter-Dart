@@ -7,7 +7,9 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
 import 'features/auth/screens/splash_screen.dart';
 import 'features/home/screens/man_hinh_chinh.dart';
+import 'features/home/screens/profile_edit_screen.dart';
 import 'screens/audio_recorder_screen.dart';
+import 'screens/text_scan_screen.dart';
 
 void main() {
   runApp(const ProviderScope(child: MyApp()));
@@ -106,6 +108,14 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: '/audio-recorder',
           builder: (context, state) => const AudioRecorderScreen(),
+        ),
+        GoRoute(
+          path: '/text-scan',
+          builder: (context, state) => const TextScanScreen(),
+        ),
+        GoRoute(
+          path: '/profile/edit',
+          builder: (context, state) => const ProfileEditScreen(),
         ),
       ],
     );

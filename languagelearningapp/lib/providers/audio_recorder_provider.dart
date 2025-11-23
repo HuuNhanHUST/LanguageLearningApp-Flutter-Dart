@@ -169,10 +169,26 @@ class AudioRecorderNotifier extends StateNotifier<AudioRecorderState> {
 
   /// Clear audio path (for re-recording)
   void clearAudioPath() {
-    state = state.copyWith(
+    // Reset về trạng thái ban đầu hoàn toàn
+    state = const AudioRecorderState(
+      isRecording: false,
       audioPath: null,
       errorMessage: null,
     );
+  }
+
+  /// Delete audio file and clear state
+  Future<void> deleteAudioFile(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (await file.exists()) {
+        await file.delete();
+      }
+      // Reset state hoàn toàn
+      clearAudioPath();
+    } catch (e) {
+      state = state.copyWith(errorMessage: 'Failed to delete audio file: $e');
+    }
   }
 
   /// Dispose recorder

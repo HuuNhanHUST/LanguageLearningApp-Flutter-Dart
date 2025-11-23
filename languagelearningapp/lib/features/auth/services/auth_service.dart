@@ -271,6 +271,36 @@ class AuthService {
     }
   }
 
+  /// Save authentication data from social login (Facebook/Google)
+  Future<void> saveAuthDataFromSocial(Map<String, dynamic> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Save tokens
+      if (data['accessToken'] != null) {
+        await prefs.setString(StorageKeys.accessToken, data['accessToken']);
+      }
+      if (data['refreshToken'] != null) {
+        await prefs.setString(StorageKeys.refreshToken, data['refreshToken']);
+      }
+
+      // Save user data
+      if (data['user'] != null) {
+        final user = User.fromJson(data['user']);
+        await prefs.setString(StorageKeys.userData, jsonEncode(user.toJson()));
+        await prefs.setString(StorageKeys.userId, user.id);
+        await prefs.setString(StorageKeys.userEmail, user.email);
+      }
+
+      await prefs.setBool(StorageKeys.isLoggedIn, true);
+
+      print('✅ Social login data saved to SharedPreferences');
+    } catch (e) {
+      print('❌ Failed to save social auth data: $e');
+      throw Exception('Failed to save social auth data: $e');
+    }
+  }
+
   /// Save authentication data
   Future<void> _saveAuthData(AuthResponse authResponse) async {
     try {
