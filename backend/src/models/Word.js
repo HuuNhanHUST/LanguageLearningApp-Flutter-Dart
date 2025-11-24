@@ -7,18 +7,23 @@ const wordSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    normalizedWord: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+    },
     meaning: {
       type: String,
       required: true,
       trim: true,
     },
     type: {
-        type: String,
-        enum: ['noun', 'verb', 'adj', 'adv', 'other'],
-        default: 'other',
-        trim: true
+      type: String,
+      enum: ['noun', 'verb', 'adj', 'adv', 'other'],
+      default: 'other',
+      trim: true,
     },
-
     example: {
       type: String,
       trim: true,
@@ -28,14 +33,23 @@ const wordSchema = new mongoose.Schema(
       trim: true,
       default: 'General',
     },
-    isMemorized: {
-      type: Boolean,
-      default: false,
+    owners: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+      ],
+      default: [],
     },
-    owner: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
+    memorizedBy: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+      ],
+      default: [],
     },
   },
   {
@@ -56,7 +70,17 @@ const wordSchema = new mongoose.Schema(
   },
 );
 
-wordSchema.index({ owner: 1, word: 1 }, { unique: true });
+wordSchema.index({ normalizedWord: 1 });
+wordSchema.index({ owners: 1 });
+
+wordSchema.pre('validate', function normalizeWord(next) {
+  if (this.word) {
+    const trimmed = this.word.trim();
+    this.word = trimmed;
+    this.normalizedWord = trimmed.toLowerCase();
+  }
+  next();
+});
 
 const Word = mongoose.model('Word', wordSchema);
 
