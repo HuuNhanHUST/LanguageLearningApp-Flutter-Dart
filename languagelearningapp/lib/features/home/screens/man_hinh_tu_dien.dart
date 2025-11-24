@@ -1,25 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart' as provider;
+
+import '../../words/models/word_model.dart';
+import '../../words/providers/word_lookup_provider.dart';
 
 /// Màn hình Từ điển
-/// Cho phép tìm kiếm và học từ vựng
-class ManHinhTuDien extends StatefulWidget {
+/// Cho phép tìm kiếm và học từ vựng được trả về từ backend
+class ManHinhTuDien extends StatelessWidget {
   const ManHinhTuDien({super.key});
 
   @override
-  State<ManHinhTuDien> createState() => _ManHinhTuDienState();
+  Widget build(BuildContext context) {
+    return provider.ChangeNotifierProvider(
+      create: (_) => WordLookupProvider(),
+      child: const _ManHinhTuDienView(),
+    );
+  }
 }
 
-class _ManHinhTuDienState extends State<ManHinhTuDien> {
+class _ManHinhTuDienView extends StatefulWidget {
+  const _ManHinhTuDienView();
+
+  @override
+  State<_ManHinhTuDienView> createState() => _ManHinhTuDienViewState();
+}
+
+class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
   final TextEditingController _boTimKiem = TextEditingController();
-  
-  // Danh sách từ vựng mẫu
-  final List<Map<String, String>> _danhSachTuVung = [
-    {'tu': 'Apple', 'phienAm': '/ˈæp.əl/', 'nghia': 'Quả táo', 'loai': 'noun'},
-    {'tu': 'Beautiful', 'phienAm': '/ˈbjuː.tɪ.fəl/', 'nghia': 'Đẹp', 'loai': 'adjective'},
-    {'tu': 'Cat', 'phienAm': '/kæt/', 'nghia': 'Con mèo', 'loai': 'noun'},
-    {'tu': 'Dance', 'phienAm': '/dæns/', 'nghia': 'Nhảy múa', 'loai': 'verb'},
-    {'tu': 'Excited', 'phienAm': '/ɪkˈsaɪ.tɪd/', 'nghia': 'Phấn khích', 'loai': 'adjective'},
-  ];
 
   @override
   void dispose() {
@@ -29,61 +36,60 @@ class _ManHinhTuDienState extends State<ManHinhTuDien> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF2D1B69), Color(0xFF1A0F3E)],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Từ điển',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Thanh tìm kiếm
-                    _xayDungThanhTimKiem(),
-                  ],
-                ),
+    return provider.Consumer<WordLookupProvider>(
+      builder: (context, tuDienProvider, _) {
+        return Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF2D1B69), Color(0xFF1A0F3E)],
               ),
-              
-              // Danh sách từ vựng
-              Expanded(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Từ điển',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _xayDungThanhTimKiem(tuDienProvider),
+                      ],
                     ),
                   ),
-                  child: _xayDungDanhSachTuVung(),
-                ),
+                  Expanded(
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(30),
+                          topRight: Radius.circular(30),
+                        ),
+                      ),
+                      child: _xayDungNoiDung(tuDienProvider),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  /// Xây dựng thanh tìm kiếm từ vựng
-  Widget _xayDungThanhTimKiem() {
+  Widget _xayDungThanhTimKiem(WordLookupProvider tuDienProvider) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
@@ -99,117 +105,258 @@ class _ManHinhTuDienState extends State<ManHinhTuDien> {
       ),
       child: TextField(
         controller: _boTimKiem,
-        decoration: const InputDecoration(
-          hintText: 'Tìm kiếm từ vựng...',
+        textInputAction: TextInputAction.search,
+        onSubmitted: (_) => _thucHienTraCuu(tuDienProvider),
+        decoration: InputDecoration(
+          hintText: 'Nhập từ tiếng Anh cần tra...',
           border: InputBorder.none,
-          icon: Icon(Icons.search, color: Color(0xFF6C63FF)),
+          icon: const Icon(Icons.search, color: Color(0xFF6C63FF)),
+          suffixIcon: tuDienProvider.isLoading
+              ? const Padding(
+                  padding: EdgeInsets.all(12.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              : IconButton(
+                  icon: const Icon(Icons.send, color: Color(0xFF6C63FF)),
+                  onPressed: () => _thucHienTraCuu(tuDienProvider),
+                ),
         ),
-        onChanged: (value) {
-          setState(() {}); // Cập nhật UI khi search
-        },
       ),
     );
   }
 
-  /// Xây dựng danh sách các từ vựng
-  Widget _xayDungDanhSachTuVung() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(20),
-      itemCount: _danhSachTuVung.length,
-      itemBuilder: (context, index) {
-        final tuVung = _danhSachTuVung[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 15),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-            border: Border.all(color: Colors.grey.withOpacity(0.1)),
+  Widget _xayDungNoiDung(WordLookupProvider tuDienProvider) {
+    if (tuDienProvider.isLoading && tuDienProvider.currentWord == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (tuDienProvider.errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Text(
+            tuDienProvider.errorMessage!,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.red,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          child: Row(
-            children: [
-              // Icon phát âm
-              Container(
-                width: 50,
-                height: 50,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF6C63FF),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.volume_up, color: Colors.white),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (tuDienProvider.currentWord != null) ...[
+            _xayDungTheTuVung(tuDienProvider.currentWord!),
+            const SizedBox(height: 25),
+          ] else ...[
+            const Text(
+              'Tra cứu từ mới',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2D1B69),
               ),
-              const SizedBox(width: 15),
-              // Thông tin từ vựng
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Nhập từ tiếng Anh và nhấn enter để lấy nghĩa, ví dụ và chủ đề. Kết quả sẽ được lưu vào tài khoản của bạn.',
+              style: TextStyle(fontSize: 14, color: Colors.black54),
+            ),
+            const SizedBox(height: 25),
+          ],
+          if (tuDienProvider.history.isNotEmpty) _xayDungLichSu(tuDienProvider),
+        ],
+      ),
+    );
+  }
+
+  Widget _xayDungTheTuVung(WordModel word) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFF6C63FF).withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          tuVung['tu']!,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2D1B69),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF6C63FF).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: Text(
-                            tuVung['loai']!,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Color(0xFF6C63FF),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
                     Text(
-                      tuVung['phienAm']!,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                        fontStyle: FontStyle.italic,
+                      word.word,
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2D1B69),
                       ),
                     ),
-                    const SizedBox(height: 5),
-                    Text(
-                      tuVung['nghia']!,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6C63FF).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        word.type,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF6C63FF),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              // Nút bookmark
-              IconButton(
-                icon: const Icon(Icons.bookmark_border),
-                color: const Color(0xFF6C63FF),
-                onPressed: () {
-                  // Xử lý lưu từ vựng
-                },
-              ),
+              if (word.topic != null && word.topic!.isNotEmpty)
+                Chip(
+                  label: Text(word.topic!),
+                  backgroundColor: const Color(0xFFEFF0FF),
+                  labelStyle: const TextStyle(color: Color(0xFF2D1B69)),
+                ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 16),
+          Text(
+            word.meaning,
+            style: const TextStyle(
+              fontSize: 16,
+              height: 1.5,
+              color: Colors.black87,
+            ),
+          ),
+          if (word.example != null && word.example!.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            const Text(
+              'Ví dụ',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2D1B69),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              word.example!,
+              style: const TextStyle(
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
+  }
+
+  Widget _xayDungLichSu(WordLookupProvider tuDienProvider) {
+    final lichSu = tuDienProvider.history;
+    final hienThiLichSu = tuDienProvider.currentWord != null
+        ? lichSu.skip(1).toList()
+        : lichSu;
+
+    if (hienThiLichSu.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tra cứu gần đây',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF2D1B69),
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...hienThiLichSu.map((word) => _xayDungMucLichSu(word, tuDienProvider)),
+      ],
+    );
+  }
+
+  Widget _xayDungMucLichSu(WordModel word, WordLookupProvider providerState) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.history, color: Color(0xFF6C63FF)),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  word.word,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  word.meaning,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 14, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.north_east, color: Color(0xFF6C63FF)),
+            onPressed: () {
+              _boTimKiem.text = word.word;
+              _thucHienTraCuu(providerState);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _thucHienTraCuu(WordLookupProvider tuDienProvider) {
+    if (tuDienProvider.isLoading) {
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    tuDienProvider.lookupWord(_boTimKiem.text);
   }
 }

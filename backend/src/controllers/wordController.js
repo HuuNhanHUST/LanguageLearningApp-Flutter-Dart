@@ -1,5 +1,77 @@
 const Word = require('../models/Word');
 const { validationResult } = require('express-validator');
+const geminiService = require('../services/geminiService');
+
+/**
+ * @desc    Lookup a word via Gemini and store if new
+ * @route   POST /api/words/lookup
+ * @access  Private
+ */
+exports.lookupWord = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array(),
+      });
+    }
+
+    const term = req.body.word.trim();
+    const normalizedTerm = term.toLowerCase();
+
+    const existingWord = await Word.findOne({
+      owner: req.user._id,
+      word: { $in: [term, normalizedTerm] },
+    });
+
+    if (existingWord) {
+      return res.status(200).json({
+        success: true,
+        message: 'Word already exists in your vocabulary list',
+        data: {
+          word: existingWord,
+          source: 'database',
+        },
+      });
+    }
+
+    const geminiData = await geminiService.fetchWordData(term);
+
+    if (!geminiData.meaning) {
+      return res.status(502).json({
+        success: false,
+        message: 'Gemini could not provide a definition. Please try another word.',
+      });
+    }
+
+    const newWord = await Word.create({
+      ...geminiData,
+      topic: geminiData.topic || 'General',
+      example: geminiData.example || '',
+      owner: req.user._id,
+      isMemorized: false,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Word fetched from Gemini successfully',
+      data: {
+        word: newWord,
+        source: 'gemini',
+      },
+    });
+  } catch (error) {
+    console.error('Lookup word error:', error);
+    const status = error.message?.includes('Gemini') ? 502 : 500;
+    res.status(status).json({
+      success: false,
+      message: error.message || 'Server error while looking up word',
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    });
+  }
+};
 
 /**
  * @desc    Create a new word

@@ -35,10 +35,20 @@ const createWordValidation = [
     .withMessage('Topic must not exceed 100 characters'),
 ];
 
+const lookupValidation = [
+  body('word')
+    .notEmpty()
+    .withMessage('Word is required')
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Word must be between 1 and 100 characters'),
+];
+
 // All routes require authentication
 router.use(auth);
 
 // Word CRUD routes
+router.post('/lookup', lookupValidation, wordController.lookupWord);
 router.post('/create', createWordValidation, wordController.createWord);
 router.get('/', wordController.getWords);
 router.get('/:id', wordController.getWordById);
