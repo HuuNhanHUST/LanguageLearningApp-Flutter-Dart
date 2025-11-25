@@ -3,6 +3,7 @@ import 'package:provider/provider.dart' as provider;
 
 import '../../words/models/word_model.dart';
 import '../../words/providers/word_lookup_provider.dart';
+import '../../words/services/text_to_speech_service.dart';
 
 /// Màn hình Từ điển
 /// Cho phép tìm kiếm và học từ vựng được trả về từ backend
@@ -27,10 +28,12 @@ class _ManHinhTuDienView extends StatefulWidget {
 
 class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
   final TextEditingController _boTimKiem = TextEditingController();
+  final TextToSpeechService _ttsService = TextToSpeechService();
 
   @override
   void dispose() {
     _boTimKiem.dispose();
+    _ttsService.dispose();
     super.dispose();
   }
 
@@ -206,13 +209,29 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      word.word,
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2D1B69),
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            word.word,
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2D1B69),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.volume_up,
+                            color: Color(0xFF6C63FF),
+                            size: 28,
+                          ),
+                          onPressed: () => _ttsService.speak(word.word),
+                          tooltip: 'Phát âm',
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Container(
@@ -255,13 +274,29 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
           ),
           if (word.example != null && word.example!.isNotEmpty) ...[
             const SizedBox(height: 18),
-            const Text(
-              'Ví dụ',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2D1B69),
-              ),
+            Row(
+              children: [
+                const Text(
+                  'Ví dụ',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2D1B69),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(
+                    Icons.volume_up,
+                    color: Color(0xFF6C63FF),
+                    size: 20,
+                  ),
+                  onPressed: () => _ttsService.speak(word.example!),
+                  tooltip: 'Phát âm ví dụ',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             Text(
@@ -338,6 +373,11 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.volume_up, color: Color(0xFF6C63FF)),
+            onPressed: () => _ttsService.speak(word.word),
+            tooltip: 'Phát âm',
           ),
           IconButton(
             icon: const Icon(Icons.north_east, color: Color(0xFF6C63FF)),
