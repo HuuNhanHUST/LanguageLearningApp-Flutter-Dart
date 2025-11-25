@@ -45,14 +45,12 @@ const userSchema = new mongoose.Schema({
     facebookId: {
         type: String,
         unique: true,
-        sparse: true, // Allow multiple null values
-        default: null
+        sparse: true // Allow multiple null values (no default, will be undefined if not set)
     },
     googleId: {
         type: String,
         unique: true,
-        sparse: true,
-        default: null
+        sparse: true // Allow multiple null values (no default, will be undefined if not set)
     },
     provider: {
         type: String,

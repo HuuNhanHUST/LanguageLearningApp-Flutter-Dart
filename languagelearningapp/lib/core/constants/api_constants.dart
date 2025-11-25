@@ -11,9 +11,8 @@ class ApiConstants {
   // - Example: 'http://192.168.1.217:5000/api'
   //
   // Change this based on your setup:
-  static const String baseUrl =
-      'http://172.20.10.8:5000/api'; // Physical device
-  // static const String baseUrl = 'http://10.0.2.2:5000/api'; // Android Emulator
+  static const String baseUrl = 'http://10.0.2.2:5000/api'; // Android Emulator
+  // static const String baseUrl = 'http://192.168.1.5:5000/api'; // Physical device
   // static const String baseUrl = 'http://localhost:5000/api'; // iOS Simulator
 
   // Auth Endpoints

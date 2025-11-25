@@ -53,6 +53,9 @@ dependencies:
   flutter_sound: ^9.2.13
   permission_handler: ^11.1.0
   
+  # Text to Speech
+  flutter_tts: ^4.2.0
+  
   # OCR & Image Processing
   google_mlkit_text_recognition: ^0.13.1
   image_picker: ^1.0.7

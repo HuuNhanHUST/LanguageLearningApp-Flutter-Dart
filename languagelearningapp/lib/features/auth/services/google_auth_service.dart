@@ -12,7 +12,7 @@ class GoogleAuthService {
 
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    serverClientId: _webClientId,
+    serverClientId: _webClientId, // For Android/iOS to get idToken
   );
   static const _storage = FlutterSecureStorage();
 
