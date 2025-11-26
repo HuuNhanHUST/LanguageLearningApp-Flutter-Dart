@@ -2,12 +2,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/storage_keys.dart';
 import '../models/user_model.dart';
 
 class AuthService {
   final http.Client _client;
+  static const _secureStorage = FlutterSecureStorage();
 
   AuthService({http.Client? client}) : _client = client ?? http.Client();
 
@@ -186,14 +188,13 @@ class AuthService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         // Update tokens after password change
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(
-          StorageKeys.accessToken,
-          data['data']['accessToken'],
+        await _secureStorage.write(
+          key: StorageKeys.accessToken,
+          value: data['data']['accessToken'],
         );
-        await prefs.setString(
-          StorageKeys.refreshToken,
-          data['data']['refreshToken'],
+        await _secureStorage.write(
+          key: StorageKeys.refreshToken,
+          value: data['data']['refreshToken'],
         );
       } else {
         final error = jsonDecode(response.body);
@@ -216,8 +217,8 @@ class AuthService {
   /// Check if user is logged in
   Future<bool> isLoggedIn() async {
     try {
+      final storedToken = await _secureStorage.read(key: StorageKeys.accessToken);
       final prefs = await SharedPreferences.getInstance();
-      final storedToken = prefs.getString(StorageKeys.accessToken);
       final isMarkedLoggedIn = prefs.getBool(StorageKeys.isLoggedIn) ?? false;
 
       if (storedToken == null || storedToken.isEmpty) {
@@ -239,8 +240,7 @@ class AuthService {
   /// Get access token
   Future<String?> getAccessToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(StorageKeys.accessToken);
+      final token = await _secureStorage.read(key: StorageKeys.accessToken);
 
       if (token == null || token.isEmpty) {
         return null;
@@ -276,12 +276,18 @@ class AuthService {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // Save tokens
+      // Save tokens to secure storage
       if (data['accessToken'] != null) {
-        await prefs.setString(StorageKeys.accessToken, data['accessToken']);
+        await _secureStorage.write(
+          key: StorageKeys.accessToken,
+          value: data['accessToken'],
+        );
       }
       if (data['refreshToken'] != null) {
-        await prefs.setString(StorageKeys.refreshToken, data['refreshToken']);
+        await _secureStorage.write(
+          key: StorageKeys.refreshToken,
+          value: data['refreshToken'],
+        );
       }
 
       // Save user data
@@ -294,7 +300,7 @@ class AuthService {
 
       await prefs.setBool(StorageKeys.isLoggedIn, true);
 
-      print('✅ Social login data saved to SharedPreferences');
+      print('✅ Social login data saved (tokens in Secure Storage, user data in SharedPreferences)');
     } catch (e) {
       print('❌ Failed to save social auth data: $e');
       throw Exception('Failed to save social auth data: $e');
@@ -304,12 +310,18 @@ class AuthService {
   /// Save authentication data
   Future<void> _saveAuthData(AuthResponse authResponse) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(StorageKeys.accessToken, authResponse.accessToken);
-      await prefs.setString(
-        StorageKeys.refreshToken,
-        authResponse.refreshToken,
+      // Save tokens to secure storage
+      await _secureStorage.write(
+        key: StorageKeys.accessToken,
+        value: authResponse.accessToken,
       );
+      await _secureStorage.write(
+        key: StorageKeys.refreshToken,
+        value: authResponse.refreshToken,
+      );
+
+      // Save user data to shared preferences
+      final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
         StorageKeys.userData,
         jsonEncode(authResponse.user.toJson()),
@@ -333,9 +345,12 @@ class AuthService {
   }
 
   Future<void> _clearStoredAuthData() async {
+    // Clear tokens from secure storage
+    await _secureStorage.delete(key: StorageKeys.accessToken);
+    await _secureStorage.delete(key: StorageKeys.refreshToken);
+
+    // Clear user data from shared preferences
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(StorageKeys.accessToken);
-    await prefs.remove(StorageKeys.refreshToken);
     await prefs.remove(StorageKeys.userData);
     await prefs.remove(StorageKeys.isLoggedIn);
     await prefs.remove(StorageKeys.userId);
