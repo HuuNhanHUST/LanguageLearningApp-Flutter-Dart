@@ -5,6 +5,9 @@ import 'package:flutter_sound/flutter_sound.dart';
 import '../../../providers/audio_recorder_provider.dart';
 import '../../../widgets/audio_recorder_button.dart';
 import '../../../screens/audio_files_screen.dart';
+import '../../words/models/word_model.dart';
+import '../../words/services/pronunciation_service.dart';
+import '../../words/services/text_to_speech_service.dart';
 
 /// Màn hình Bài học Phát âm
 /// Cho phép học và thực hành phát âm với ghi âm
@@ -27,24 +30,58 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
   int _buocHienTai = 0;
   late FlutterSoundPlayer _player;
   bool _isPlaying = false;
-  String? _previousAudioPath; // Để detect khi nào có file ghi âm MỚI
+  String? _previousAudioPath;
+  
+  // Dữ liệu từ database
+  List<WordModel> _cacBaiTap = [];
+  bool _isLoadingWords = true;
+  final PronunciationService _pronunciationService = PronunciationService();
+  final TextToSpeechService _ttsService = TextToSpeechService();
 
   @override
   void initState() {
     super.initState();
     _player = FlutterSoundPlayer();
     _khoiTaoPlayer();
-    // Reset state khi vào màn hình (để đồng bộ với Provider)
+    _taiDanhSachTu();
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final audioState = ref.read(audioRecorderProvider);
       if (audioState.audioPath != null) {
-        // Nếu Provider có file, sync với local
         _previousAudioPath = audioState.audioPath;
       } else {
-        // Nếu Provider null, đảm bảo local cũng null
         _previousAudioPath = null;
       }
     });
+  }
+  
+  /// Tải danh sách từ vựng từ database
+  Future<void> _taiDanhSachTu() async {
+    try {
+      final words = await _pronunciationService.getWordsForPronunciation(
+        // Không filter topic để lấy tất cả từ của user
+        // Không truyền limit để hiển thị tất cả từ từ database
+      );
+      
+      if (mounted) {
+        setState(() {
+          _cacBaiTap = words;
+          _isLoadingWords = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingWords = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi tải từ vựng: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _khoiTaoPlayer() async {
@@ -54,6 +91,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
   @override
   void dispose() {
     _player.closePlayer();
+    _ttsService.dispose();
     super.dispose();
   }
 
@@ -187,15 +225,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
     }
   }
 
-  // Danh sách các từ/câu cần luyện phát âm
-  final List<Map<String, String>> _cacBaiTap = [
-    {
-      'tu': 'Apple',
-      'phienAm': '/ˈæp.əl/',
-      'nghia': 'Quả táo',
-      'huongDan': 'Nhấn mạnh vào âm đầu "A", sau đó phát âm nhẹ "pple"',
-    },
-  ];
+
 
   /// Chuyển sang bài tập tiếp theo
   void _chuyenBaiTapTiepTheo() {
@@ -255,7 +285,6 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
   @override
   Widget build(BuildContext context) {
     final audioState = ref.watch(audioRecorderProvider);
-    final baiTapHienTai = _cacBaiTap[_buocHienTai];
 
     return Scaffold(
       body: Container(
@@ -263,41 +292,90 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF2D1B69), Color(0xFF1A0F3E)],
+            colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              // Header với nút back và tiến độ
-              _xayDungHeader(),
-
-              // Nội dung bài học
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
+          child: _isLoadingWords
+              ? const Center(
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Từ cần học
-                      _xayDungTheTu(baiTapHienTai),
-                      const SizedBox(height: 30),
-
-                      // Hướng dẫn
-                      _xayDungHuongDan(baiTapHienTai),
-                      const SizedBox(height: 30),
-
-                      // Khu vực ghi âm
-                      _xayDungKhuVucGhiAm(audioState),
-                      const SizedBox(height: 30),
-
-                      // Các nút điều khiển
-                      _xayDungCacNutDieuKhien(),
+                      CircularProgressIndicator(color: Colors.white),
+                      SizedBox(height: 16),
+                      Text(
+                        'Đang tải bài học...',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
-                ),
-              ),
-            ],
-          ),
+                )
+              : _cacBaiTap.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            color: Colors.white,
+                            size: 64,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Không có bài tập nào',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.arrow_back),
+                            label: const Text('Quay lại'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF4F46E5),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        // Header với nút back và tiến độ
+                        _xayDungHeader(),
+
+                        // Nội dung bài học
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 10),
+                                _xayDungTheTu(_cacBaiTap[_buocHienTai]),
+                                const SizedBox(height: 20),
+                                _xayDungHuongDan(_cacBaiTap[_buocHienTai]),
+                                const SizedBox(height: 25),
+                                _xayDungKhuVucGhiAm(audioState),
+                                const SizedBox(height: 25),
+                                _xayDungCacNutDieuKhien(),
+                                const SizedBox(height: 20),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
         ),
       ),
     );
@@ -387,8 +465,256 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
     );
   }
 
-  /// Xây dựng thẻ hiển thị từ
-  Widget _xayDungTheTu(Map<String, String> baiTap) {
+  /// Xây dựng thẻ hiển thị từ - ELSA Style
+  Widget _xayDungTheTu(WordModel word) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Icon và Topic
+          if (word.topic != null && word.topic!.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEEF2FF),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.category,
+                    size: 16,
+                    color: Color(0xFF6366F1),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    word.topic!,
+                    style: const TextStyle(
+                      color: Color(0xFF6366F1),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          // Từ chính với icon phát âm
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                word.word,
+                style: const TextStyle(
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1F2937),
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(width: 16),
+              InkWell(
+                onTap: () => _ttsService.speak(word.word),
+                borderRadius: BorderRadius.circular(30),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6366F1).withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.volume_up_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Loại từ
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF3C7),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              _getVietnameseType(word.type),
+              style: const TextStyle(
+                color: Color(0xFFD97706),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Nghĩa tiếng Việt
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              word.meaning,
+              style: const TextStyle(
+                fontSize: 18,
+                color: Color(0xFF374151),
+                fontWeight: FontWeight.w500,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+
+          // Ví dụ
+          if (word.example != null && word.example!.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF93C5FD),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.format_quote,
+                        color: Color(0xFF3B82F6),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Ví dụ',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF3B82F6),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      InkWell(
+                        onTap: () => _ttsService.speak(word.example!),
+                        child: const Icon(
+                          Icons.volume_up,
+                          color: Color(0xFF3B82F6),
+                          size: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    word.example!,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF1F2937),
+                      fontStyle: FontStyle.italic,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _getVietnameseType(String type) {
+    const typeMap = {
+      'noun': 'Danh từ',
+      'verb': 'Động từ',
+      'adjective': 'Tính từ',
+      'adverb': 'Trạng từ',
+      'pronoun': 'Đại từ',
+      'preposition': 'Giới từ',
+      'conjunction': 'Liên từ',
+      'interjection': 'Thán từ',
+    };
+    return typeMap[type.toLowerCase()] ?? type;
+  }
+
+  /// Xây dựng hướng dẫn phát âm
+  Widget _xayDungHuongDan(WordModel word) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.tips_and_updates, color: Colors.white, size: 22),
+              SizedBox(width: 10),
+              Text(
+                'Hướng dẫn',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            word.example != null && word.example!.isNotEmpty
+                ? 'Hãy đọc to và rõ ràng. Tập trung vào cách phát âm từng âm tiết trong câu ví dụ.'
+                : 'Hãy đọc to và rõ ràng từ "${word.word}". Chú ý đến phát âm và ngữ điệu.',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              height: 1.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _xayDungTheTuCu(Map<String, String> baiTap) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(30),
@@ -405,7 +731,6 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
       ),
       child: Column(
         children: [
-          // Từ tiếng Anh
           Text(
             baiTap['tu']!,
             style: const TextStyle(
@@ -415,7 +740,6 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
             ),
           ),
           const SizedBox(height: 10),
-          // Phiên âm
           Text(
             baiTap['phienAm']!,
             style: TextStyle(
@@ -425,7 +749,6 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
             ),
           ),
           const SizedBox(height: 15),
-          // Nghĩa tiếng Việt
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             decoration: BoxDecoration(
@@ -442,10 +765,8 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
             ),
           ),
           const SizedBox(height: 20),
-          // Nút phát âm mẫu
           ElevatedButton.icon(
             onPressed: () {
-              // TODO: Phát audio mẫu
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('🔊 Đang phát âm mẫu...')),
               );
@@ -459,46 +780,6 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(25),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Xây dựng hướng dẫn phát âm
-  Widget _xayDungHuongDan(Map<String, String> baiTap) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.white.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.lightbulb, color: Colors.amber, size: 24),
-              SizedBox(width: 10),
-              Text(
-                'Hướng dẫn',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            baiTap['huongDan']!,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              height: 1.5,
             ),
           ),
         ],
