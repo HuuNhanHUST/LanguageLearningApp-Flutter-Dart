@@ -1,4 +1,5 @@
 const Word = require('../models/Word');
+const UserWord = require('../models/UserWord');
 const { validationResult } = require('express-validator');
 const geminiService = require('../services/geminiService');
 
@@ -14,20 +15,35 @@ const buildWordLookupQuery = (term, normalizedTerm) => ({
   ],
 });
 
-const formatWordForUser = (wordDoc, userId) => {
+/**
+ * Format word with user's learning data
+ */
+const formatWordWithUserData = async (wordDoc, userId) => {
   const wordObj = wordDoc.toObject();
-  const userObjectId = userId.toString();
-  wordObj.isMemorized = wordDoc.memorizedBy?.some(
-    (id) => id.toString() === userObjectId,
-  );
-  delete wordObj.memorizedBy;
-  delete wordObj.owners;
-  delete wordObj.normalizedWord;
+  
+  // Get user's learning data for this word
+  const userWord = await UserWord.findOne({
+    userId: userId,
+    wordId: wordDoc._id,
+  });
+  
+  if (userWord) {
+    wordObj.isMemorized = userWord.isMemorized;
+    wordObj.addedAt = userWord.addedAt;
+    wordObj.reviewCount = userWord.reviewCount;
+    wordObj.accuracyRate = userWord.accuracyRate;
+    wordObj.nextReviewDate = userWord.nextReviewDate;
+    wordObj.personalNote = userWord.personalNote;
+    wordObj.personalExample = userWord.personalExample;
+  } else {
+    wordObj.isMemorized = false;
+  }
+  
   return wordObj;
 };
 
 /**
- * @desc    Lookup a word via Gemini and store if new
+ * @desc    Lookup a word via Gemini or dictionary and add to user's vocabulary
  * @route   POST /api/words/lookup
  * @access  Private
  */
@@ -45,33 +61,56 @@ exports.lookupWord = async (req, res) => {
     const term = req.body.word.trim();
     const normalizedTerm = term.toLowerCase();
 
-    let existingWord = await Word.findOne(
+    // 1. Check if word exists in dictionary
+    let wordDefinition = await Word.findOne(
       buildWordLookupQuery(term, normalizedTerm),
     );
 
-    if (existingWord) {
-      const alreadyOwned = existingWord.owners?.some((id) =>
-        id.toString() === req.user._id.toString()
-      );
+    // 2. If exists, check if user already has it
+    if (wordDefinition) {
+      let userWord = await UserWord.findOne({
+        userId: req.user._id,
+        wordId: wordDefinition._id,
+      });
 
-      if (!alreadyOwned) {
-        existingWord.owners = existingWord.owners || [];
-        existingWord.owners.push(req.user._id);
-        await existingWord.save();
+      if (userWord) {
+        // User already has this word
+        const response = await formatWordWithUserData(wordDefinition, req.user._id);
+        return res.status(200).json({
+          success: true,
+          message: 'Word already exists in your vocabulary list',
+          data: {
+            word: response,
+            source: 'existing',
+          },
+        });
       }
 
+      // Add word to user's vocabulary
+      userWord = await UserWord.create({
+        userId: req.user._id,
+        wordId: wordDefinition._id,
+        source: 'lookup',
+        nextReviewDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+      });
+
+      // Update word's total learners
+      await Word.findByIdAndUpdate(wordDefinition._id, {
+        $inc: { totalLearners: 1 },
+      });
+
+      const response = await formatWordWithUserData(wordDefinition, req.user._id);
       return res.status(200).json({
         success: true,
-        message: alreadyOwned
-          ? 'Word already exists in your vocabulary list'
-          : 'Word added to your vocabulary list',
+        message: 'Word added to your vocabulary list',
         data: {
-          word: formatWordForUser(existingWord, req.user._id),
-          source: 'database',
+          word: response,
+          source: 'dictionary',
         },
       });
     }
 
+    // 3. Word not in dictionary - fetch from Gemini
     const geminiData = await geminiService.fetchWordData(term);
 
     if (!geminiData.meaning) {
@@ -81,22 +120,31 @@ exports.lookupWord = async (req, res) => {
       });
     }
 
-    const newWord = await Word.create({
+    // 4. Create new word in dictionary
+    wordDefinition = await Word.create({
       ...geminiData,
       word: geminiData.word || term,
       topic: geminiData.topic || 'General',
       example: geminiData.example || '',
-      owners: [req.user._id],
-      memorizedBy: [],
+      totalLearners: 1,
     });
 
+    // 5. Add to user's vocabulary
+    await UserWord.create({
+      userId: req.user._id,
+      wordId: wordDefinition._id,
+      source: 'lookup',
+      nextReviewDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+
+    const response = await formatWordWithUserData(wordDefinition, req.user._id);
     res.status(201).json({
-        success: true,
-        message: 'Word fetched from Gemini successfully',
-        data: {
-          word: formatWordForUser(newWord, req.user._id),
-          source: 'gemini',
-        },
+      success: true,
+      message: 'Word fetched from Gemini successfully',
+      data: {
+        word: response,
+        source: 'gemini',
+      },
     });
   } catch (error) {
     console.error('Lookup word error:', error);
@@ -110,7 +158,7 @@ exports.lookupWord = async (req, res) => {
 };
 
 /**
- * @desc    Create a new word
+ * @desc    Create a new word manually
  * @route   POST /api/words/create
  * @access  Private (requires authentication)
  */
@@ -127,57 +175,74 @@ exports.createWord = async (req, res) => {
     }
 
     const { word, meaning, type, example, topic } = req.body;
-
     const normalizedWord = word.trim().toLowerCase();
 
-    let existingWord = await Word.findOne(
+    // 1. Check if word exists in dictionary
+    let wordDefinition = await Word.findOne(
       buildWordLookupQuery(word, normalizedWord),
     );
 
-    if (existingWord) {
-      const alreadyOwned = existingWord.owners?.some((id) =>
-        id.toString() === req.user._id.toString()
-      );
+    if (wordDefinition) {
+      // Word exists, check if user has it
+      const userWord = await UserWord.findOne({
+        userId: req.user._id,
+        wordId: wordDefinition._id,
+      });
 
-      if (alreadyOwned) {
+      if (userWord) {
         return res.status(400).json({
           success: false,
           message: 'Word already exists in your vocabulary list',
         });
       }
 
-      existingWord.owners = existingWord.owners || [];
-      existingWord.owners.push(req.user._id);
-      await existingWord.save();
+      // Add to user's vocabulary
+      await UserWord.create({
+        userId: req.user._id,
+        wordId: wordDefinition._id,
+        source: 'manual',
+        nextReviewDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
 
+      await Word.findByIdAndUpdate(wordDefinition._id, {
+        $inc: { totalLearners: 1 },
+      });
+
+      const response = await formatWordWithUserData(wordDefinition, req.user._id);
       return res.status(200).json({
         success: true,
         message: 'Word added to your vocabulary list',
         data: {
-          word: formatWordForUser(existingWord, req.user._id),
+          word: response,
         },
       });
     }
 
-    // Create new word definition
-    const newWord = new Word({
+    // 2. Create new word in dictionary
+    wordDefinition = await Word.create({
       word: word.trim(),
       meaning: meaning.trim(),
       type: type || 'other',
       example: example?.trim(),
       topic: topic?.trim() || 'General',
-      owners: [req.user._id],
-      memorizedBy: [],
+      totalLearners: 1,
     });
 
-    await newWord.save();
+    // 3. Add to user's vocabulary
+    await UserWord.create({
+      userId: req.user._id,
+      wordId: wordDefinition._id,
+      source: 'manual',
+      nextReviewDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
 
+    const response = await formatWordWithUserData(wordDefinition, req.user._id);
     res.status(201).json({
-        success: true,
-        message: 'Word created successfully',
-        data: {
-          word: formatWordForUser(newWord, req.user._id),
-        },
+      success: true,
+      message: 'Word created successfully',
+      data: {
+        word: response,
+      },
     });
   } catch (error) {
     console.error('Create word error:', error);
@@ -196,33 +261,54 @@ exports.createWord = async (req, res) => {
  */
 exports.getWords = async (req, res) => {
   try {
-    const { topic, isMemorized, type } = req.query;
+    const { topic, isMemorized, type, limit = 100 } = req.query;
 
-    // Build filter query
-    const filter = { owners: req.user._id };
-
-    if (topic) {
-      filter.topic = topic;
-    }
-
+    // Build filter for UserWord
+    const userWordFilter = { userId: req.user._id };
     if (isMemorized !== undefined) {
-      filter.isMemorized = isMemorized === 'true';
+      userWordFilter.isMemorized = isMemorized === 'true';
     }
 
-    if (type) {
-      filter.type = type;
+    // Get user's words
+    const userWords = await UserWord.find(userWordFilter)
+      .populate('wordId')
+      .sort({ addedAt: -1 })
+      .limit(parseInt(limit));
+
+    // Filter by word properties if needed
+    let filteredWords = userWords;
+    if (topic || type) {
+      filteredWords = userWords.filter((uw) => {
+        if (!uw.wordId) return false;
+        if (topic && uw.wordId.topic !== topic) return false;
+        if (type && uw.wordId.type !== type) return false;
+        return true;
+      });
     }
 
-    const words = await Word.find(filter).sort({ createdAt: -1 });
-    const formattedWords = words.map((word) => formatWordForUser(word, req.user._id));
+    // Format response
+    const formattedWords = filteredWords.map((uw) => {
+      if (!uw.wordId) return null;
+      
+      const wordObj = uw.wordId.toObject();
+      wordObj.isMemorized = uw.isMemorized;
+      wordObj.addedAt = uw.addedAt;
+      wordObj.reviewCount = uw.reviewCount;
+      wordObj.accuracyRate = uw.accuracyRate;
+      wordObj.nextReviewDate = uw.nextReviewDate;
+      wordObj.personalNote = uw.personalNote;
+      wordObj.personalExample = uw.personalExample;
+      
+      return wordObj;
+    }).filter(Boolean);
 
     res.status(200).json({
       success: true,
       message: 'Words retrieved successfully',
-        data: {
-          words: formattedWords,
-          count: formattedWords.length,
-        },
+      data: {
+        words: formattedWords,
+        count: formattedWords.length,
+      },
     });
   } catch (error) {
     console.error('Get words error:', error);
@@ -241,24 +327,36 @@ exports.getWords = async (req, res) => {
  */
 exports.getWordById = async (req, res) => {
   try {
-    const word = await Word.findOne({
-      _id: req.params.id,
-      owners: req.user._id,
-    });
+    // Find word in dictionary
+    const wordDefinition = await Word.findById(req.params.id);
 
-    if (!word) {
+    if (!wordDefinition) {
       return res.status(404).json({
         success: false,
         message: 'Word not found',
       });
     }
 
+    // Check if user has this word
+    const userWord = await UserWord.findOne({
+      userId: req.user._id,
+      wordId: wordDefinition._id,
+    });
+
+    if (!userWord) {
+      return res.status(404).json({
+        success: false,
+        message: 'Word not found in your vocabulary',
+      });
+    }
+
+    const response = await formatWordWithUserData(wordDefinition, req.user._id);
     res.status(200).json({
       success: true,
       message: 'Word retrieved successfully',
-        data: {
-          word: formatWordForUser(word, req.user._id),
-        },
+      data: {
+        word: response,
+      },
     });
   } catch (error) {
     console.error('Get word by ID error:', error);
@@ -271,54 +369,62 @@ exports.getWordById = async (req, res) => {
 };
 
 /**
- * @desc    Update a word
+ * @desc    Update a word (user's personal data or word definition)
  * @route   PUT /api/words/:id
  * @access  Private
  */
 exports.updateWord = async (req, res) => {
   try {
-    const { word, meaning, type, example, topic, isMemorized } = req.body;
+    const { word, meaning, type, example, topic, isMemorized, personalNote, personalExample } = req.body;
 
-    const existingWord = await Word.findOne({
-      _id: req.params.id,
-      owners: req.user._id,
-    });
-
-    if (!existingWord) {
+    const wordDefinition = await Word.findById(req.params.id);
+    if (!wordDefinition) {
       return res.status(404).json({
         success: false,
         message: 'Word not found',
       });
     }
 
-    // Update fields
-    if (word !== undefined) existingWord.word = word.trim();
-    if (meaning !== undefined) existingWord.meaning = meaning.trim();
-    if (type !== undefined) existingWord.type = type;
-    if (example !== undefined) existingWord.example = example.trim();
-    if (topic !== undefined) existingWord.topic = topic.trim();
-    if (isMemorized !== undefined) {
-      existingWord.memorizedBy = existingWord.memorizedBy || [];
-      const userIdStr = req.user._id.toString();
-      const isAlreadyMemorized = existingWord.memorizedBy.some(
-        (id) => id.toString() === userIdStr,
-      );
-      if (isMemorized && !isAlreadyMemorized) {
-        existingWord.memorizedBy.push(req.user._id);
-      } else if (!isMemorized && isAlreadyMemorized) {
-        existingWord.memorizedBy = existingWord.memorizedBy.filter(
-          (id) => id.toString() !== userIdStr,
-        );
-      }
+    const userWord = await UserWord.findOne({
+      userId: req.user._id,
+      wordId: wordDefinition._id,
+    });
+
+    if (!userWord) {
+      return res.status(404).json({
+        success: false,
+        message: 'Word not found in your vocabulary',
+      });
     }
 
-    await existingWord.save();
+    // Update word definition (if provided)
+    if (word !== undefined) wordDefinition.word = word.trim();
+    if (meaning !== undefined) wordDefinition.meaning = meaning.trim();
+    if (type !== undefined) wordDefinition.type = type;
+    if (example !== undefined) wordDefinition.example = example.trim();
+    if (topic !== undefined) wordDefinition.topic = topic.trim();
 
+    // Update user's personal data
+    if (isMemorized !== undefined) {
+      userWord.isMemorized = isMemorized;
+      if (isMemorized) {
+        userWord.memorizedAt = new Date();
+      } else {
+        userWord.memorizedAt = null;
+      }
+    }
+    if (personalNote !== undefined) userWord.personalNote = personalNote;
+    if (personalExample !== undefined) userWord.personalExample = personalExample;
+
+    await wordDefinition.save();
+    await userWord.save();
+
+    const response = await formatWordWithUserData(wordDefinition, req.user._id);
     res.status(200).json({
       success: true,
       message: 'Word updated successfully',
       data: {
-        word: formatWordForUser(existingWord, req.user._id),
+        word: response,
       },
     });
   } catch (error) {
@@ -332,37 +438,40 @@ exports.updateWord = async (req, res) => {
 };
 
 /**
- * @desc    Delete a word
+ * @desc    Delete a word from user's vocabulary
  * @route   DELETE /api/words/:id
  * @access  Private
  */
 exports.deleteWord = async (req, res) => {
   try {
-    const word = await Word.findOne({
-      _id: req.params.id,
-      owners: req.user._id,
-    });
-
-    if (!word) {
+    const wordDefinition = await Word.findById(req.params.id);
+    
+    if (!wordDefinition) {
       return res.status(404).json({
         success: false,
         message: 'Word not found',
       });
     }
 
-    word.owners = (word.owners || []).filter(
-      (id) => id.toString() !== req.user._id.toString(),
-    );
+    const userWord = await UserWord.findOne({
+      userId: req.user._id,
+      wordId: wordDefinition._id,
+    });
 
-    word.memorizedBy = (word.memorizedBy || []).filter(
-      (id) => id.toString() !== req.user._id.toString(),
-    );
-
-    if (!word.owners.length) {
-      await word.deleteOne();
-    } else {
-      await word.save();
+    if (!userWord) {
+      return res.status(404).json({
+        success: false,
+        message: 'Word not found in your vocabulary',
+      });
     }
+
+    // Remove from user's vocabulary
+    await userWord.deleteOne();
+
+    // Decrement total learners count
+    await Word.findByIdAndUpdate(wordDefinition._id, {
+      $inc: { totalLearners: -1 },
+    });
 
     res.status(200).json({
       success: true,
@@ -385,41 +494,36 @@ exports.deleteWord = async (req, res) => {
  */
 exports.toggleMemorized = async (req, res) => {
   try {
-    const word = await Word.findOne({
-      _id: req.params.id,
-      owners: req.user._id,
-    });
+    const wordDefinition = await Word.findById(req.params.id);
 
-    if (!word) {
+    if (!wordDefinition) {
       return res.status(404).json({
         success: false,
         message: 'Word not found',
       });
     }
 
-    word.memorizedBy = word.memorizedBy || [];
-    const userIdStr = req.user._id.toString();
-    const currentlyMemorized = word.memorizedBy.some(
-      (id) => id.toString() === userIdStr,
-    );
+    const userWord = await UserWord.findOne({
+      userId: req.user._id,
+      wordId: wordDefinition._id,
+    });
 
-    if (currentlyMemorized) {
-      word.memorizedBy = word.memorizedBy.filter(
-        (id) => id.toString() !== userIdStr,
-      );
-    } else {
-      word.memorizedBy.push(req.user._id);
+    if (!userWord) {
+      return res.status(404).json({
+        success: false,
+        message: 'Word not found in your vocabulary',
+      });
     }
 
-    await word.save();
+    // Toggle memorized status
+    await userWord.toggleMemorized();
 
-    const updatedMemorized = !currentlyMemorized;
-
+    const response = await formatWordWithUserData(wordDefinition, req.user._id);
     res.status(200).json({
       success: true,
-      message: `Word marked as ${updatedMemorized ? 'memorized' : 'not memorized'}`,
+      message: `Word marked as ${userWord.isMemorized ? 'memorized' : 'not memorized'}`,
       data: {
-        word: formatWordForUser(word, req.user._id),
+        word: response,
       },
     });
   } catch (error) {
@@ -427,6 +531,71 @@ exports.toggleMemorized = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Server error while updating word status',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+};
+
+/**
+ * @desc    Get user's vocabulary statistics
+ * @route   GET /api/words/stats
+ * @access  Private
+ */
+exports.getUserStats = async (req, res) => {
+  try {
+    const stats = await UserWord.getUserStats(req.user._id);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Statistics retrieved successfully',
+      data: stats,
+    });
+  } catch (error) {
+    console.error('Get stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while retrieving statistics',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+};
+
+/**
+ * @desc    Get words due for review
+ * @route   GET /api/words/due
+ * @access  Private
+ */
+exports.getDueWords = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const dueWords = await UserWord.getDueWords(req.user._id, limit);
+    
+    const formattedWords = dueWords.map((uw) => {
+      if (!uw.wordId) return null;
+      
+      const wordObj = uw.wordId.toObject();
+      wordObj.isMemorized = uw.isMemorized;
+      wordObj.addedAt = uw.addedAt;
+      wordObj.reviewCount = uw.reviewCount;
+      wordObj.accuracyRate = uw.accuracyRate;
+      wordObj.nextReviewDate = uw.nextReviewDate;
+      
+      return wordObj;
+    }).filter(Boolean);
+
+    res.status(200).json({
+      success: true,
+      message: 'Due words retrieved successfully',
+      data: {
+        words: formattedWords,
+        count: formattedWords.length,
+      },
+    });
+  } catch (error) {
+    console.error('Get due words error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while retrieving due words',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }

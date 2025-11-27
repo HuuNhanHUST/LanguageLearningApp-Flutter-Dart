@@ -50,6 +50,8 @@ router.use(auth);
 // Word CRUD routes
 router.post('/lookup', lookupValidation, wordController.lookupWord);
 router.post('/create', createWordValidation, wordController.createWord);
+router.get('/stats', wordController.getUserStats); // NEW: User stats
+router.get('/due', wordController.getDueWords); // NEW: Words due for review
 router.get('/', wordController.getWords);
 router.get('/:id', wordController.getWordById);
 router.put('/:id', wordController.updateWord);
