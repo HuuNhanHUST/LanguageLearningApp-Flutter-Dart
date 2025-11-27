@@ -1,5 +1,10 @@
 const mongoose = require('mongoose');
 
+/**
+ * Word Model - Global Dictionary (3000 pre-loaded words)
+ * Represents word definitions shared across all users
+ * No ownership - public dictionary for everyone
+ */
 const wordSchema = new mongoose.Schema(
   {
     word: {
@@ -10,6 +15,7 @@ const wordSchema = new mongoose.Schema(
     normalizedWord: {
       type: String,
       required: true,
+      unique: true,
       lowercase: true,
       trim: true,
     },
@@ -33,23 +39,29 @@ const wordSchema = new mongoose.Schema(
       trim: true,
       default: 'General',
     },
-    owners: {
-      type: [
-        {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
-        },
-      ],
-      default: [],
+    // NEW: Enhanced fields for learning
+    level: {
+      type: String,
+      enum: ['beginner', 'intermediate', 'advanced'],
+      default: 'intermediate',
     },
-    memorizedBy: {
-      type: [
-        {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
-        },
-      ],
-      default: [],
+    frequency: {
+      type: Number,
+      default: 0,
+      comment: 'Word frequency rank (lower = more common)',
+    },
+    pronunciation: {
+      type: String,
+      trim: true,
+      comment: 'IPA phonetic notation',
+    },
+    synonyms: [String],
+    antonyms: [String],
+    // Analytics
+    totalLearners: {
+      type: Number,
+      default: 0,
+      comment: 'Count of users who added this word',
     },
   },
   {
@@ -70,9 +82,17 @@ const wordSchema = new mongoose.Schema(
   },
 );
 
+// Indexes for performance
 wordSchema.index({ normalizedWord: 1 });
-wordSchema.index({ owners: 1 });
+wordSchema.index({ topic: 1, level: 1 });
+wordSchema.index({ frequency: 1 });
 
+// Indexes for performance
+wordSchema.index({ normalizedWord: 1 });
+wordSchema.index({ topic: 1, level: 1 });
+wordSchema.index({ frequency: 1 });
+
+// Pre-validate hook to auto-generate normalizedWord
 wordSchema.pre('validate', function normalizeWord(next) {
   if (this.word) {
     const trimmed = this.word.trim();
@@ -81,6 +101,25 @@ wordSchema.pre('validate', function normalizeWord(next) {
   }
   next();
 });
+
+// Static method to search words
+wordSchema.statics.searchWords = async function (query, filters = {}) {
+  const searchQuery = {
+    $or: [
+      { normalizedWord: new RegExp(query.toLowerCase(), 'i') },
+      { word: new RegExp(query, 'i') },
+      { meaning: new RegExp(query, 'i') },
+    ],
+  };
+
+  if (filters.topic) searchQuery.topic = filters.topic;
+  if (filters.level) searchQuery.level = filters.level;
+  if (filters.type) searchQuery.type = filters.type;
+
+  return this.find(searchQuery)
+    .limit(filters.limit || 50)
+    .sort({ frequency: 1 });
+};
 
 const Word = mongoose.model('Word', wordSchema);
 
