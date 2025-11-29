@@ -4,6 +4,7 @@ import 'man_hinh_tu_dien.dart';
 import 'man_hinh_tim_kiem.dart';
 import 'man_hinh_tien_do.dart';
 import 'man_hinh_ho_so.dart';
+import '../../chat/screens/chat_screen.dart';
 
 /// Màn hình chính với Bottom Navigation Bar
 /// Quản lý 5 tabs: Học tập, Từ điển, Tìm kiếm, Tiến độ, Hồ sơ
@@ -22,9 +23,10 @@ class _ManHinhChinhState extends State<ManHinhChinh> {
   final List<Widget> _cacManHinh = [
     const ManHinhHocTap(),    // Tab 0: Học tập
     const ManHinhTuDien(),    // Tab 1: Từ điển
-    const ManHinhTimKiem(),   // Tab 2: Tìm kiếm
-    const ManHinhTienDo(),    // Tab 3: Tiến độ
-    const ManHinhHoSo(),      // Tab 4: Hồ sơ
+    const ChatScreen(),       // Tab 2: Chat AI
+    const ManHinhTimKiem(),   // Tab 3: Tìm kiếm
+    const ManHinhTienDo(),    // Tab 4: Tiến độ
+    const ManHinhHoSo(),      // Tab 5: Hồ sơ
   ];
 
   /// Xử lý khi người dùng tap vào tab
@@ -57,6 +59,10 @@ class _ManHinhChinhState extends State<ManHinhChinh> {
           BottomNavigationBarItem(
             icon: Icon(Icons.book),
             label: 'Từ điển',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble),
+            label: 'AI Chat',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.search),
