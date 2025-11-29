@@ -11,6 +11,7 @@ const connectDB = require('./src/config/database');
 // Import routes
 const userRoutes = require('./src/routes/userRoutes');
 const wordRoutes = require('./src/routes/wordRoutes');
+const chatRoutes = require('./src/routes/chatRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -51,6 +52,7 @@ app.get('/api/test', (req, res) => {
 // API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/words', wordRoutes);
+app.use('/api/chat', chatRoutes);
 // app.use('/api/auth', authRoutes); // authRoutes removed after revert
 
 // 404 Handler
