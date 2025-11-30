@@ -11,6 +11,7 @@ const connectDB = require('./src/config/database');
 // Import routes
 const userRoutes = require('./src/routes/userRoutes');
 const wordRoutes = require('./src/routes/wordRoutes');
+const aiRoutes = require('./src/routes/aiRoutes');
 const uploadRoutes = require('./src/routes/uploadRoutes');
 const chatRoutes = require('./src/routes/chatRoutes');
 
@@ -53,6 +54,7 @@ app.get('/api/test', (req, res) => {
 // API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/words', wordRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/chat', chatRoutes);
 // app.use('/api/auth', authRoutes); // authRoutes removed after revert
