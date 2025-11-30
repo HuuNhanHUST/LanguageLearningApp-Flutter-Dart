@@ -14,7 +14,7 @@ class ApiConstants {
   //static const String baseUrl = 'http://10.0.2.2:5000/api'; // Android Emulator
   // static const String baseUrl = 'http://192.168.1.5:5000/api'; // Physical device
   // static const String baseUrl = 'http://localhost:5000/api'; // iOS Simulator
-  static const String baseUrl = 'http://192.168.100.227:5000/api';
+  static const String baseUrl = 'http://172.18.198.253:5000/api';
   // Auth Endpoints
   static const String register = '$baseUrl/users/register';
   static const String login = '$baseUrl/users/login';
@@ -31,9 +31,13 @@ class ApiConstants {
   static const String getUserStats = '$baseUrl/users/stats';
   static const String updateDailyGoal = '$baseUrl/users/daily-goal';
 
-  // Word Endpoints
+  // Word endpoints
   static const String wordLookup = '$baseUrl/words/lookup';
   static const String getWords = '$baseUrl/words';
+
+  // Chat endpoints
+  static const String chat = '$baseUrl/chat';
+  static const String translate = '$baseUrl/chat/translate';
 
   // Headers
   static Map<String, String> getHeaders({String? token}) {
