@@ -18,7 +18,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  bool _isLoading = false;
+  bool _isFacebookLoading = false;
+  bool _isGoogleLoading = false;
 
   @override
   void dispose() {
@@ -32,8 +33,6 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
-
     final authProvider = context.read<AuthProvider>();
 
     final success = await authProvider.login(
@@ -42,8 +41,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (mounted) {
-      setState(() => _isLoading = false);
-
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -69,13 +66,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleFacebookLogin() async {
-    setState(() => _isLoading = true);
+    setState(() => _isFacebookLoading = true);
 
     try {
       final userData = await FacebookAuthService.signInWithFacebook();
 
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _isFacebookLoading = false);
 
         if (userData != null && userData.isNotEmpty) {
           // Save to SharedPreferences using AuthService
@@ -104,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _isFacebookLoading = false);
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -282,9 +279,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _handleFacebookLogin,
+                      onPressed: _isFacebookLoading ? null : _handleFacebookLogin,
                       icon: const Icon(Icons.facebook, size: 20),
-                      label: _isLoading
+                      label: _isFacebookLoading
                           ? const SizedBox(
                               height: 20,
                               width: 20,
@@ -306,14 +303,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: _isLoading
+                      onPressed: _isGoogleLoading
                           ? null
                           : () async {
-                              setState(() => _isLoading = true);
+                              setState(() => _isGoogleLoading = true);
                               try {
                                 final userData =
                                     await GoogleAuthService.signInWithGoogle();
-                                if (mounted) setState(() => _isLoading = false);
+                                if (mounted) setState(() => _isGoogleLoading = false);
 
                                 if (userData != null && userData.isNotEmpty) {
                                   // Save to SharedPreferences using AuthService
@@ -342,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   );
                                 }
                               } catch (e) {
-                                if (mounted) setState(() => _isLoading = false);
+                                if (mounted) setState(() => _isGoogleLoading = false);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text('Google login failed: $e'),
@@ -352,7 +349,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               }
                             },
                       icon: const Icon(Icons.g_mobiledata, size: 20),
-                      label: _isLoading
+                      label: _isGoogleLoading
                           ? const SizedBox(
                               height: 20,
                               width: 20,
