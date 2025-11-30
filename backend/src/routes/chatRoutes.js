@@ -10,4 +10,11 @@ const { auth } = require('../middleware/auth');
  */
 router.post('/', auth, (req, res) => chatController.chat(req, res));
 
+/**
+ * @route   POST /api/chat/translate
+ * @desc    Translate text to Vietnamese
+ * @access  Private
+ */
+router.post('/translate', auth, (req, res) => chatController.translate(req, res));
+
 module.exports = router;
