@@ -368,7 +368,7 @@ class _TextAnalysisScreenState extends State<TextAnalysisScreen>
                 ],
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );
