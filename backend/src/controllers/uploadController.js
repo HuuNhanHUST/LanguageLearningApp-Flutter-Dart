@@ -10,7 +10,17 @@ const uploadAudio = async (req, res) => {
     }
 
     // Kiểm tra loại file
-    const allowedMimeTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4'];
+    const allowedMimeTypes = [
+      'audio/wav',
+      'audio/x-wav',
+      'audio/mpeg',
+      'audio/mp3',
+      'audio/webm',
+      'audio/ogg',
+      'audio/m4a',
+      'audio/x-m4a',
+      'audio/aac',
+    ];
     if (!allowedMimeTypes.includes(req.file.mimetype)) {
       return res.status(400).json({
         success: false,
@@ -19,7 +29,7 @@ const uploadAudio = async (req, res) => {
     }
 
     // Kiểm tra kích thước file (tối đa 10MB)
-    const maxFileSize = 10 * 1024 * 1024; // 10MB
+    const maxFileSize = 15 * 1024 * 1024; // 15MB
     if (req.file.size > maxFileSize) {
       return res.status(400).json({
         success: false,
@@ -28,6 +38,9 @@ const uploadAudio = async (req, res) => {
     }
 
     // Trả về thông tin file đã upload
+    const relativePath = `/uploads/audio/${req.file.filename}`;
+    const baseUrl = process.env.BACKEND_PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+
     res.status(200).json({
       success: true,
       message: 'File audio được upload thành công',
@@ -36,7 +49,8 @@ const uploadAudio = async (req, res) => {
         originalName: req.file.originalname,
         mimetype: req.file.mimetype,
         size: req.file.size,
-        path: `/uploads/audio/${req.file.filename}`,
+        path: relativePath,
+        url: `${baseUrl}${relativePath}`,
       },
     });
   } catch (error) {

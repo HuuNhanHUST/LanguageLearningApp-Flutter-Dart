@@ -8,15 +8,18 @@ if (!fs.existsSync(AUDIO_UPLOAD_DIR)) {
   fs.mkdirSync(AUDIO_UPLOAD_DIR, { recursive: true });
 }
 
+const sanitizeForFilename = (value = '') => value.replace(/[^a-zA-Z0-9_-]/g, '');
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     cb(null, AUDIO_UPLOAD_DIR);
   },
-  filename: (_req, file, cb) => {
+  filename: (req, file, cb) => {
     const timestamp = Date.now();
-    const randomSuffix = Math.round(Math.random() * 1e9);
+    const rawUserId = req?.user?.id || req?.user?._id || 'anonymous';
+    const safeUserId = sanitizeForFilename(String(rawUserId)) || 'anonymous';
     const ext = path.extname(file.originalname) || '.webm';
-    cb(null, `${timestamp}-${randomSuffix}${ext}`);
+    cb(null, `${safeUserId}_${timestamp}${ext}`);
   },
 });
 
@@ -38,13 +41,13 @@ const upload = multer({
     fileSize: 15 * 1024 * 1024, // 15MB
   },
   fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
-      cb(null, true);
-    } else if (file.mimetype.startsWith('audio/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only audio files are allowed.'));
+    if (file?.mimetype && file.mimetype.startsWith('audio/')) {
+      if (ALLOWED_MIME_TYPES.size === 0 || ALLOWED_MIME_TYPES.has(file.mimetype)) {
+        return cb(null, true);
+      }
     }
+
+    cb(new Error('Only audio files are allowed.'));
   },
 });
 

@@ -210,7 +210,7 @@ class _TextScanScreenState extends State<TextScanScreen> {
             body: json.encode({'text': textToTranslate}),
           )
           .timeout(
-            const Duration(seconds: 15),
+            const Duration(seconds: 90),
             onTimeout: () {
               throw Exception('Timeout: Dịch quá lâu, vui lòng thử lại');
             },
