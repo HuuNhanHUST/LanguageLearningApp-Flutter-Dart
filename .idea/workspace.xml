@@ -6,9 +6,11 @@
   <component name="ChangeListManager">
     <list default="true" id="ac6ffd48-335e-47e5-a2c4-8b56ceec33e8" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/models/Word.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/models/Word.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/languagelearningapp/lib/features/home/screens/profile_edit_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/languagelearningapp/lib/features/home/screens/profile_edit_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/languagelearningapp/lib/screens/text_analysis_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/languagelearningapp/lib/screens/text_analysis_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/languagelearningapp/lib/core/constants/api_constants.dart" beforeDir="false" afterPath="$PROJECT_DIR$/languagelearningapp/lib/core/constants/api_constants.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/languagelearningapp/lib/screens/text_scan_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/languagelearningapp/lib/screens/text_scan_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/languagelearningapp/pubspec.lock" beforeDir="false" afterPath="$PROJECT_DIR$/languagelearningapp/pubspec.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/languagelearningapp/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/languagelearningapp/pubspec.yaml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -43,7 +45,7 @@
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "dart.analysis.tool.window.visible": "false",
-    "git-widget-placeholder": "SCRUM-23-rate-limiter",
+    "git-widget-placeholder": "main",
     "kotlin-language-version-configured": "true",
     "settings.editor.selected.configurable": "dart.settings",
     "show.migrate.to.gradle.popup": "false"

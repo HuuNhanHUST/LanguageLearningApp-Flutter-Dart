@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:http/http.dart' as http;
+import '../services/offline_translation_service.dart';
 import 'text_analysis_screen.dart';
 import '../core/constants/api_constants.dart';
 import '../features/auth/services/auth_service.dart';
@@ -21,15 +23,39 @@ class _TextScanScreenState extends State<TextScanScreen> {
   final List<File> _scannedImages = [];
   String _recognizedText = '';
   String _translatedText = '';
+  String _translationMode = 'online';
   bool _isProcessing = false;
   bool _isTranslating = false;
+  bool _offlineModelReady = false;
+  bool _isDownloadingModel = false;
   final ImagePicker _picker = ImagePicker();
   final TextRecognizer _textRecognizer = TextRecognizer();
+  final OfflineTranslationService _offlineTranslationService =
+      OfflineTranslationService();
+
+  @override
+  void initState() {
+    super.initState();
+    _initOfflineModelStatus();
+  }
 
   @override
   void dispose() {
     _textRecognizer.close();
+    _offlineTranslationService.dispose();
     super.dispose();
+  }
+
+  Future<void> _initOfflineModelStatus() async {
+    try {
+      final ready = await _offlineTranslationService.isModelDownloaded();
+      if (!mounted) return;
+      setState(() {
+        _offlineModelReady = ready;
+      });
+    } catch (error) {
+      debugPrint('Kiểm tra model ngoại tuyến thất bại: $error');
+    }
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -115,6 +141,8 @@ class _TextScanScreenState extends State<TextScanScreen> {
 
       if (_recognizedText.isEmpty) {
         _showError('Không tìm thấy văn bản trong ảnh');
+      } else if (_offlineModelReady && !_isTranslating) {
+        _translateText(autoTrigger: true);
       }
     } catch (e) {
       setState(() {
@@ -124,12 +152,40 @@ class _TextScanScreenState extends State<TextScanScreen> {
     }
   }
 
-  Future<void> _translateText() async {
-    if (_recognizedText.isEmpty) return;
+  Future<void> _translateText({bool autoTrigger = false}) async {
+    if (_recognizedText.isEmpty || _isTranslating) return;
 
     setState(() {
       _isTranslating = true;
     });
+
+    final textForTranslation = _recognizedText.trim();
+
+    try {
+      await _offlineTranslationService.ensureModelDownloaded();
+      final result = await _offlineTranslationService.translate(textForTranslation);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _translatedText = result;
+        _translationMode = 'offline';
+        _offlineModelReady = true;
+        _isTranslating = false;
+      });
+      if (!autoTrigger) {
+        _showSnack('✅ Đã dịch ngoại tuyến');
+      }
+      return;
+    } on OfflineTranslationException catch (error) {
+      if (!autoTrigger) {
+        _showError(error.message);
+      } else {
+        debugPrint('Offline translation cần tải model: ${error.message}');
+      }
+    } catch (error) {
+      debugPrint('Offline translation error: $error');
+    }
 
     try {
       final authService = AuthService();
@@ -139,12 +195,11 @@ class _TextScanScreenState extends State<TextScanScreen> {
         throw Exception('Vui lòng đăng nhập để sử dụng tính năng dịch');
       }
 
-      // Giới hạn độ dài text để dịch nhanh hơn
-      String textToTranslate = _recognizedText;
+      String textToTranslate = textForTranslation;
       bool isTruncated = false;
 
-      if (_recognizedText.length > 1000) {
-        textToTranslate = _recognizedText.substring(0, 1000);
+      if (textToTranslate.length > 1000) {
+        textToTranslate = textToTranslate.substring(0, 1000);
         isTruncated = true;
       }
 
@@ -164,8 +219,12 @@ class _TextScanScreenState extends State<TextScanScreen> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
+          if (!mounted) {
+            return;
+          }
           setState(() {
             _translatedText = data['data']['translatedText'];
+            _translationMode = 'online';
             if (isTruncated) {
               _translatedText +=
                   '\n\n[📝 Chỉ dịch 1000 ký tự đầu tiên để tăng tốc độ]';
@@ -173,13 +232,9 @@ class _TextScanScreenState extends State<TextScanScreen> {
             _isTranslating = false;
           });
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Đã dịch văn bản'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-            ),
-          );
+          if (!autoTrigger) {
+            _showSnack('✅ Đã dịch văn bản');
+          }
         } else {
           throw Exception(data['message'] ?? 'Không thể dịch văn bản');
         }
@@ -187,10 +242,47 @@ class _TextScanScreenState extends State<TextScanScreen> {
         throw Exception('Server error: ${response.statusCode}');
       }
     } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isTranslating = false;
+        });
+      }
+
+      if (!autoTrigger) {
+        _showError('Lỗi khi dịch: $e');
+      } else {
+        debugPrint('Auto translate failed: $e');
+      }
+    }
+  }
+
+  Future<void> _downloadOfflineModel() async {
+    if (_isDownloadingModel) {
+      return;
+    }
+
+    setState(() {
+      _isDownloadingModel = true;
+    });
+
+    try {
+      await _offlineTranslationService.ensureModelDownloaded();
+      if (!mounted) {
+        return;
+      }
       setState(() {
-        _isTranslating = false;
+        _offlineModelReady = true;
+        _isDownloadingModel = false;
       });
-      _showError('Lỗi khi dịch: $e');
+      _showSnack('✅ Đã tải xong model dịch ngoại tuyến');
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isDownloadingModel = false;
+      });
+      _showError(error.toString());
     }
   }
 
@@ -230,6 +322,16 @@ class _TextScanScreenState extends State<TextScanScreen> {
     }
   }
 
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -237,6 +339,61 @@ class _TextScanScreenState extends State<TextScanScreen> {
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 3),
       ),
+    );
+  }
+
+  Widget _buildTranslationStatusRow() {
+    final bool hasTranslation = _translatedText.isNotEmpty;
+    Color chipColor;
+    IconData chipIcon;
+    String chipText;
+
+    if (hasTranslation && _translationMode == 'offline') {
+      chipColor = Colors.green.shade100;
+      chipIcon = Icons.offline_bolt;
+      chipText = 'Bản dịch: ngoại tuyến';
+    } else if (hasTranslation && _translationMode == 'online') {
+      chipColor = Colors.blue.shade100;
+      chipIcon = Icons.wifi;
+      chipText = 'Bản dịch: online';
+    } else if (_offlineModelReady) {
+      chipColor = Colors.green.shade50;
+      chipIcon = Icons.offline_pin;
+      chipText = 'Model offline đã sẵn sàng';
+    } else {
+      chipColor = Colors.grey.shade200;
+      chipIcon = Icons.cloud_download;
+      chipText = 'Chưa tải model offline';
+    }
+
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        Chip(
+          backgroundColor: chipColor,
+          avatar: Icon(chipIcon, size: 18, color: Colors.black87),
+          label: Text(
+            chipText,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+        if (!_offlineModelReady)
+          OutlinedButton.icon(
+            onPressed: _isDownloadingModel ? null : _downloadOfflineModel,
+            icon: _isDownloadingModel
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download),
+            label: Text(
+              _isDownloadingModel ? 'Đang tải...' : 'Tải model offline',
+            ),
+          ),
+      ],
     );
   }
 
@@ -422,6 +579,8 @@ class _TextScanScreenState extends State<TextScanScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                _buildTranslationStatusRow(),
                 const SizedBox(height: 20),
                 if (_isProcessing)
                   const Center(
@@ -493,7 +652,6 @@ class _TextScanScreenState extends State<TextScanScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
                         Row(
                           children: [
                             Expanded(
