@@ -8,6 +8,8 @@ import '../../../screens/audio_files_screen.dart';
 import '../../words/models/word_model.dart';
 import '../../words/services/pronunciation_service.dart';
 import '../../words/services/text_to_speech_service.dart';
+import '../../learning/providers/learning_provider.dart';
+import '../../learning/widgets/level_up_dialog.dart';
 
 /// Màn hình Bài học Phát âm
 /// Cho phép học và thực hành phát âm với ghi âm
@@ -58,16 +60,54 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
   /// Tải danh sách từ vựng từ database
   Future<void> _taiDanhSachTu() async {
     try {
-      final words = await _pronunciationService.getWordsForPronunciation(
-        // Không filter topic để lấy tất cả từ của user
-        // Không truyền limit để hiển thị tất cả từ từ database
-      );
-      
+      // Load learned words first - wrapped in Future to avoid provider modification during build
+      await Future.microtask(() async {
+        await ref.read(learningProvider.notifier).loadProgress();
+      });
+      final learningState = ref.read(learningProvider);
+
+      // Get all words from database
+      final allWords = await _pronunciationService.getWordsForPronunciation();
+
+      // Filter out learned words
+      final unlearnedWords = allWords
+          .where((word) => !learningState.learnedWordIds.contains(word.id))
+          .toList();
+
+      // Shuffle again to ensure different words each time
+      unlearnedWords.shuffle();
+
+      // Limit to remaining daily words (max 30/day)
+      final wordsToShow = unlearnedWords.take(learningState.remaining).toList();
+
       if (mounted) {
         setState(() {
-          _cacBaiTap = words;
+          _cacBaiTap = wordsToShow;
           _isLoadingWords = false;
         });
+
+        // Show info if no words available
+        if (wordsToShow.isEmpty) {
+          if (!learningState.canLearnMore) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  '🎉 Bạn đã hoàn thành 30 từ hôm nay! Quay lại vào ngày mai nhé!',
+                ),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          } else if (unlearnedWords.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('🎓 Bạn đã học hết tất cả từ vựng!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -228,7 +268,53 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
 
 
   /// Chuyển sang bài tập tiếp theo
-  void _chuyenBaiTapTiepTheo() {
+  Future<void> _chuyenBaiTapTiepTheo() async {
+    // Mark word learned and earn XP
+    if (_buocHienTai < _cacBaiTap.length) {
+      final currentWord = _cacBaiTap[_buocHienTai];
+      final result = await ref
+          .read(learningProvider.notifier)
+          .markWordLearned(currentWord.id);
+
+      if (result['success'] == true && mounted) {
+        // Show snackbar for XP gained
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    result['message'] as String,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF6C63FF),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        // Show level up dialog if leveled up
+        if (result['leveledUp'] == true) {
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => LevelUpDialog(
+                newLevel: result['newLevel'] as int,
+                xpGained: result['xpGained'] as int,
+              ),
+            );
+          }
+        }
+      }
+    }
+
     if (_buocHienTai < _cacBaiTap.length - 1) {
       // Dừng phát audio nếu đang phát
       if (_isPlaying) {

@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:math' as math;
+import '../../learning/providers/learning_provider.dart';
 
 /// Màn hình Tiến độ
 /// Hiển thị biểu đồ radar (pentagon), thống kê học tập
-class ManHinhTienDo extends StatelessWidget {
+class ManHinhTienDo extends ConsumerWidget {
   const ManHinhTienDo({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final learningState = ref.watch(learningProvider);
+    
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -43,11 +47,11 @@ class ManHinhTienDo extends StatelessWidget {
                 const SizedBox(height: 30),
                 
                 // Biểu đồ radar (pentagon)
-                _xayDungBieuDoRadar(),
+                _xayDungBieuDoRadar(learningState),
                 const SizedBox(height: 30),
                 
                 // Thống kê chi tiết
-                _xayDungThongKe(),
+                _xayDungThongKe(learningState),
               ],
             ),
           ),
@@ -57,14 +61,15 @@ class ManHinhTienDo extends StatelessWidget {
   }
 
   /// Xây dựng biểu đồ radar 5 chiều (giống ELSA)
-  Widget _xayDungBieuDoRadar() {
-    // Dữ liệu 5 kỹ năng (0.0 - 1.0)
+  Widget _xayDungBieuDoRadar(LearningState learningState) {
+    // Dữ liệu 5 kỹ năng (0.0 - 1.0) - tính từ XP và words learned
+    final progress = learningState.totalWordsLearned / 100; // Tỷ lệ hoàn thành
     final Map<String, double> kyNang = {
-      'Phát âm': 0.84,
-      'Nghe': 0.97,
-      'Lưu loát': 0.91,
-      'Nhấn âm': 0.99,
-      'Ngữ điệu': 0.83,
+      'Phát âm': (progress * 0.84).clamp(0.0, 1.0),
+      'Nghe': (progress * 0.97).clamp(0.0, 1.0),
+      'Lưu loát': (progress * 0.91).clamp(0.0, 1.0),
+      'Nhấn âm': (progress * 0.99).clamp(0.0, 1.0),
+      'Ngữ điệu': (progress * 0.83).clamp(0.0, 1.0),
     };
 
     return Container(
@@ -107,9 +112,9 @@ class ManHinhTienDo extends StatelessWidget {
                   ),
                 ],
               ),
-              const Text(
-                '98%',
-                style: TextStyle(
+              Text(
+                '${((learningState.totalWordsLearned / 500) * 100).clamp(0, 100).toInt()}%',
+                style: const TextStyle(
                   fontSize: 48,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF6C63FF),
@@ -175,12 +180,12 @@ class ManHinhTienDo extends StatelessWidget {
   }
 
   /// Xây dựng các thống kê chi tiết
-  Widget _xayDungThongKe() {
+  Widget _xayDungThongKe(LearningState learningState) {
     final cacThongKe = [
-      {'tieu_de': 'Tổng thời gian học', 'gia_tri': '24.5 giờ', 'icon': Icons.access_time, 'mau': const Color(0xFF6C63FF)},
-      {'tieu_de': 'Bài học hoàn thành', 'gia_tri': '48/60', 'icon': Icons.check_circle, 'mau': const Color(0xFF4CAF50)},
-      {'tieu_de': 'Từ vựng đã học', 'gia_tri': '342 từ', 'icon': Icons.library_books, 'mau': const Color(0xFFFF9800)},
-      {'tieu_de': 'Chuỗi ngày học', 'gia_tri': '12 ngày', 'icon': Icons.local_fire_department, 'mau': const Color(0xFFE91E63)},
+      {'tieu_de': 'Level hiện tại', 'gia_tri': 'Level ${learningState.level}', 'icon': Icons.stars, 'mau': const Color(0xFF6C63FF)},
+      {'tieu_de': 'Điểm kinh nghiệm', 'gia_tri': '${learningState.xp} XP', 'icon': Icons.emoji_events, 'mau': const Color(0xFF4CAF50)},
+      {'tieu_de': 'Từ vựng đã học', 'gia_tri': '${learningState.totalWordsLearned} từ', 'icon': Icons.library_books, 'mau': const Color(0xFFFF9800)},
+      {'tieu_de': 'Chuỗi ngày học', 'gia_tri': '${learningState.streak} ngày', 'icon': Icons.local_fire_department, 'mau': const Color(0xFFE91E63)},
     ];
 
     return GridView.builder(
