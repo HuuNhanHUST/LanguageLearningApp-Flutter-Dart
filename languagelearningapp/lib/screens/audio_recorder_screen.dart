@@ -2,13 +2,37 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/audio_recorder_provider.dart';
+import 'package:audio_waveforms/audio_waveforms.dart';
 import 'audio_files_screen.dart';
 
-class AudioRecorderScreen extends ConsumerWidget {
+class AudioRecorderScreen extends ConsumerStatefulWidget {
   const AudioRecorderScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AudioRecorderScreen> createState() => _AudioRecorderScreenState();
+}
+
+class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
+  late final RecorderController _recorderController;
+
+  @override
+  void initState() {
+    super.initState();
+    _recorderController = RecorderController()
+      ..androidEncoder = AndroidEncoder.aac
+      ..androidOutputFormat = AndroidOutputFormat.mpeg4
+      ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
+      ..sampleRate = 44100;
+  }
+
+  @override
+  void dispose() {
+    _recorderController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final audioState = ref.watch(audioRecorderProvider);
     final audioNotifier = ref.read(audioRecorderProvider.notifier);
 
@@ -60,49 +84,57 @@ class AudioRecorderScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   const SizedBox(height: 30),
-                  
-                  // Recording Status Icon with Animation
-                  TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0.95, end: audioState.isRecording ? 1.05 : 1.0),
-                    duration: const Duration(milliseconds: 500),
-                    builder: (context, value, child) {
-                      return Transform.scale(
-                        scale: value,
-                        child: Container(
-                          width: 180,
-                          height: 180,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: audioState.isRecording 
-                                  ? [Colors.red[400]!, Colors.red[600]!]
-                                  : [Colors.indigo[400]!, Colors.indigo[600]!],
+
+                  // Visualizer or static icon depending on recording state
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: audioState.isRecording
+                        ? Container(
+                            key: const ValueKey('waveformsPkg'),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.indigo.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.2)),
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: audioState.isRecording 
-                                    ? Colors.red.withOpacity(0.4)
-                                    : Colors.indigo.withOpacity(0.4),
-                                blurRadius: 20,
-                                spreadRadius: 5,
+                            child: AudioWaveforms(
+                              recorderController: _recorderController,
+                              waveStyle: const WaveStyle(
+                                waveColor: Color(0xFF6366F1),
+                                extendWaveform: true,
+                                showMiddleLine: false,
+                                waveCap: StrokeCap.round,
                               ),
-                            ],
+                              size: const Size(double.infinity, 80),
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                            ),
+                          )
+                        : Container(
+                            key: const ValueKey('staticIcon'),
+                            width: 180,
+                            height: 180,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Colors.indigo[400]!, Colors.indigo[600]!],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.indigo.withOpacity(0.4),
+                                  blurRadius: 20,
+                                  spreadRadius: 5,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.mic_none, size: 90, color: Colors.white),
                           ),
-                          child: Icon(
-                            audioState.isRecording ? Icons.mic : Icons.mic_none,
-                            size: 90,
-                            color: Colors.white,
-                          ),
-                        ),
-                      );
-                    },
                   ),
-                  
+
                   const SizedBox(height: 40),
-                  
-                  // Recording Status Text
+
                   Text(
                     audioState.isRecording ? 'Đang ghi âm...' : 'Sẵn sàng ghi âm',
                     style: TextStyle(
@@ -111,16 +143,21 @@ class AudioRecorderScreen extends ConsumerWidget {
                       color: audioState.isRecording ? Colors.red[600] : const Color(0xFF6366F1),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 50),
-                  
-                  // Record Button
+
                   SizedBox(
                     width: 280,
                     height: 70,
                     child: ElevatedButton(
                       onPressed: () async {
-                        await audioNotifier.toggleRecording();
+                        if (!audioState.isRecording) {
+                          await audioNotifier.startRecording();
+                          await _recorderController.record();
+                        } else {
+                          await audioNotifier.stopRecording();
+                          await _recorderController.pause();
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: audioState.isRecording ? Colors.red[600] : Colors.green[500],
@@ -151,10 +188,9 @@ class AudioRecorderScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 40),
-                  
-                  // Audio File Information
+
                   if (audioState.audioPath != null) ...[
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -237,8 +273,7 @@ class AudioRecorderScreen extends ConsumerWidget {
                       ),
                     ),
                   ],
-                  
-                  // Error Message
+
                   if (audioState.errorMessage != null) ...[
                     const SizedBox(height: 20),
                     Container(
@@ -296,7 +331,7 @@ class AudioRecorderScreen extends ConsumerWidget {
                       ),
                     ),
                   ],
-                  
+
                   const SizedBox(height: 40),
                 ],
               ),
