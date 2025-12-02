@@ -15,6 +15,7 @@ const aiRoutes = require('./src/routes/aiRoutes');
 const uploadRoutes = require('./src/routes/uploadRoutes');
 const chatRoutes = require('./src/routes/chatRoutes');
 const pronunciationRoutes = require('./src/routes/pronunciationRoutes');
+const gamificationRoutes = require('./src/routes/gamificationRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -59,6 +60,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/pronunciation', pronunciationRoutes);
+app.use('/api/gamification', gamificationRoutes);
 // app.use('/api/auth', authRoutes); // authRoutes removed after revert
 
 // 404 Handler
