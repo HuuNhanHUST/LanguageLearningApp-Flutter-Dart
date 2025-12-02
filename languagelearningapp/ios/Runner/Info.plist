@@ -46,7 +46,7 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>We need microphone access to record audio for language learning.</string>
+	<string>Ứng dụng cần quyền truy cập Microphone để hỗ trợ bạn luyện phát âm và kiểm tra lỗi sai.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>We need camera access to scan text from images.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

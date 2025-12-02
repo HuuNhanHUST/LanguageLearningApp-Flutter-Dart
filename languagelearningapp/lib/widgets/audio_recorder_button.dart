@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/audio_recorder_provider.dart';
+import 'package:audio_waveforms/audio_waveforms.dart';
 
 /// Audio Recorder Button Widget
-class AudioRecorderButton extends ConsumerWidget {
+class AudioRecorderButton extends ConsumerStatefulWidget {
   final VoidCallback? onRecordingComplete;
   final double size;
   final Color? activeColor;
@@ -18,40 +19,62 @@ class AudioRecorderButton extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AudioRecorderButton> createState() => _AudioRecorderButtonState();
+}
+
+class _AudioRecorderButtonState extends ConsumerState<AudioRecorderButton> {
+  late final RecorderController _recorderController;
+
+  @override
+  void initState() {
+    super.initState();
+    _recorderController = RecorderController()
+      ..androidEncoder = AndroidEncoder.aac
+      ..androidOutputFormat = AndroidOutputFormat.mpeg4
+      ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
+      ..sampleRate = 44100;
+  }
+
+  @override
+  void dispose() {
+    _recorderController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final recorderState = ref.watch(audioRecorderProvider);
     final recorderNotifier = ref.read(audioRecorderProvider.notifier);
 
-    // Show error if any
+    // Show error snack bar if any
     if (recorderState.errorMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(recorderState.errorMessage!),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
+          SnackBar(content: Text(recorderState.errorMessage!), backgroundColor: Colors.red),
         );
         recorderNotifier.clearError();
       });
     }
 
-    // Removed automatic callback to prevent spam notifications
-    // Parent widget will handle notification manually
-
     return GestureDetector(
       onTap: () async {
-        await recorderNotifier.toggleRecording();
+        if (!recorderState.isRecording) {
+          await recorderNotifier.startRecording();
+          await _recorderController.record();
+        } else {
+          await recorderNotifier.stopRecording();
+          await _recorderController.pause();
+        }
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        width: size,
-        height: size,
+        width: widget.size,
+        height: widget.size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: recorderState.isRecording
-              ? (activeColor ?? Colors.red.shade50)
-              : (inactiveColor ?? Colors.blue.shade50),
+              ? (widget.activeColor ?? Colors.red.shade50)
+              : (widget.inactiveColor ?? Colors.blue.shade50),
           boxShadow: [
             BoxShadow(
               color: recorderState.isRecording
@@ -63,39 +86,28 @@ class AudioRecorderButton extends ConsumerWidget {
           ],
         ),
         child: recorderState.isRecording
-            ? _buildRecordingIcon(context)
-            : _buildMicrophoneIcon(context),
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(widget.size),
+                child: AudioWaveforms(
+                  recorderController: _recorderController,
+                  size: Size(widget.size, widget.size * 0.6),
+                  waveStyle: const WaveStyle(
+                    waveColor: Colors.red,
+                    extendWaveform: true,
+                    showMiddleLine: false,
+                    waveCap: StrokeCap.round,
+                  ),
+                  padding: const EdgeInsets.all(10),
+                ),
+              )
+            : Icon(
+                Icons.mic,
+                size: widget.size * 0.5,
+                color: widget.inactiveColor != null
+                    ? _getContrastColor(widget.inactiveColor!)
+                    : Colors.blue,
+              ),
       ),
-    );
-  }
-
-  /// Build microphone icon (not recording)
-  Widget _buildMicrophoneIcon(BuildContext context) {
-    return Icon(
-      Icons.mic,
-      size: size * 0.5,
-      color: inactiveColor != null
-          ? _getContrastColor(inactiveColor!)
-          : Colors.blue,
-    );
-  }
-
-  /// Build stop icon with pulsing animation (recording)
-  Widget _buildRecordingIcon(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Pulsing circle animation
-        _PulsingCircle(size: size, color: activeColor ?? Colors.red),
-        // Stop icon
-        Icon(
-          Icons.stop,
-          size: size * 0.4,
-          color: activeColor != null
-              ? _getContrastColor(activeColor!)
-              : Colors.red,
-        ),
-      ],
     );
   }
 
@@ -103,60 +115,6 @@ class AudioRecorderButton extends ConsumerWidget {
   Color _getContrastColor(Color backgroundColor) {
     final luminance = backgroundColor.computeLuminance();
     return luminance > 0.5 ? Colors.black87 : Colors.white;
-  }
-}
-
-/// Pulsing Circle Animation Widget
-class _PulsingCircle extends StatefulWidget {
-  final double size;
-  final Color color;
-
-  const _PulsingCircle({required this.size, required this.color});
-
-  @override
-  State<_PulsingCircle> createState() => _PulsingCircleState();
-}
-
-class _PulsingCircleState extends State<_PulsingCircle>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    _animation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Container(
-          width: widget.size * _animation.value,
-          height: widget.size * _animation.value,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: widget.color.withOpacity(0.5), width: 2),
-          ),
-        );
-      },
-    );
   }
 }
 
