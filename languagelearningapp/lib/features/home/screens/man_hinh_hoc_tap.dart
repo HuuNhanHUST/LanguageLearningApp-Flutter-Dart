@@ -1,14 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'man_hinh_bai_hoc_phat_am.dart';
 import '../../../screens/text_scan_screen.dart';
+import '../../learning/widgets/daily_progress_widget.dart';
+import '../../learning/providers/learning_provider.dart';
 
 /// Màn hình Dashboard - Tab Học tập chính
 /// Hiển thị các bài học, categories, tiến độ giống ELSA
-class ManHinhHocTap extends StatelessWidget {
+class ManHinhHocTap extends ConsumerStatefulWidget {
   const ManHinhHocTap({super.key});
 
   @override
+  ConsumerState<ManHinhHocTap> createState() => _ManHinhHocTapState();
+}
+
+class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
+  @override
+  void initState() {
+    super.initState();
+    // Load learning progress khi màn hình được khởi tạo
+    Future.microtask(() => ref.read(learningProvider.notifier).loadProgress());
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final learningState = ref.watch(learningProvider);
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -19,18 +36,22 @@ class ManHinhHocTap extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header với avatar và greeting
-                _xayDungHeader(),
-                const SizedBox(height: 30),
+          child: learningState.isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header với avatar và greeting
+                      _xayDungHeader(),
+                      const SizedBox(height: 20),
 
-                // Vòng tròn tiến độ tổng thể
-                _xayDungVongTronTienDo(),
-                const SizedBox(height: 30),
+                      // Daily Progress Widget (NEW)
+                      const DailyProgressWidget(),
+                      const SizedBox(height: 20),
 
                 // Danh sách bài học
                 _xayDungTieuDe('Bài học của bạn'),
@@ -303,13 +324,26 @@ class ManHinhHocTap extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               // Nút bắt đầu
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: baiHoc['mau'] as Color,
-                  shape: BoxShape.circle,
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ManHinhBaiHocPhatAm(
+                        tenBaiHoc: baiHoc['ten'] as String,
+                        chuDe: baiHoc['chuDe'] as String,
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: baiHoc['mau'] as Color,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.play_arrow, color: Colors.white),
                 ),
-                child: const Icon(Icons.play_arrow, color: Colors.white),
               ),
             ],
           ),

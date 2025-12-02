@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/services/auth_service.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../learning/providers/learning_provider.dart';
 
 /// Màn hình Hồ sơ người dùng
 /// Hiển thị thông tin cá nhân, cài đặt
-class ManHinhHoSo extends StatelessWidget {
+class ManHinhHoSo extends ConsumerWidget {
   const ManHinhHoSo({super.key});
 
   Future<User?> _loadUserProfile(AuthService authService) async {
@@ -21,8 +23,9 @@ class ManHinhHoSo extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final authService = AuthService();
+    final learningState = ref.watch(learningProvider);
 
     return Scaffold(
       body: Container(
@@ -52,7 +55,7 @@ class ManHinhHoSo extends StatelessWidget {
                     }
 
                     final user = snapshot.data;
-                    return _xayDungHeader(user, context);
+                    return _xayDungHeader(user, context, learningState);
                   },
                 ),
 
@@ -73,13 +76,7 @@ class ManHinhHoSo extends StatelessWidget {
                     child: Column(
                       children: [
                         // Thành tích
-                        FutureBuilder<User?>(
-                          future: _loadUserProfile(authService),
-                          builder: (context, snapshot) {
-                            final user = snapshot.data;
-                            return _xayDungThanhTich(user);
-                          },
-                        ),
+                        _xayDungThanhTich(learningState),
                         const SizedBox(height: 30),
 
                         // Cài đặt
@@ -97,7 +94,7 @@ class ManHinhHoSo extends StatelessWidget {
   }
 
   /// Xây dựng header với avatar và thông tin user
-  Widget _xayDungHeader(User? user, BuildContext context) {
+  Widget _xayDungHeader(User? user, BuildContext context, LearningState learningState) {
     final displayName = user != null ? user.fullName : 'Bạn chưa đăng nhập';
     final email = user?.email ?? '';
 
@@ -179,7 +176,7 @@ class ManHinhHoSo extends StatelessWidget {
                 const Icon(Icons.star, color: Colors.white, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  user != null ? 'Level ${user.level}' : 'Chưa có cấp độ',
+                  'Level ${learningState.level}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
@@ -195,15 +192,15 @@ class ManHinhHoSo extends StatelessWidget {
   }
 
   /// Xây dựng section thành tích
-  Widget _xayDungThanhTich(User? user) {
-    final medals = user != null ? '${user.streak}' : '0';
-    final goals = user != null ? '${user.preferences.dailyGoal}' : '0';
-    final points = user != null ? '${user.xp}' : '0';
+  Widget _xayDungThanhTich(LearningState learningState) {
+    final medals = learningState.totalWordsLearned;
+    final goals = learningState.dailyLimit;
+    final points = learningState.xp;
 
     final cacThanhTich = [
-      {'icon': '🏆', 'ten': 'Huy chương', 'soLuong': medals},
-      {'icon': '🎯', 'ten': 'Mục tiêu', 'soLuong': goals},
-      {'icon': '⭐', 'ten': 'Điểm thưởng', 'soLuong': points},
+      {'icon': '📚', 'ten': 'Từ đã học', 'soLuong': '$medals'},
+      {'icon': '🎯', 'ten': 'Mục tiêu/ngày', 'soLuong': '$goals'},
+      {'icon': '⭐', 'ten': 'Điểm XP', 'soLuong': '$points'},
     ];
 
     return Column(
