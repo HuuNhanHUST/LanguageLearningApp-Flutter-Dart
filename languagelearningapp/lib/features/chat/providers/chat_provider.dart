@@ -5,23 +5,23 @@ import '../services/chat_service.dart';
 /// State cho chat
 class ChatState {
   final List<ChatMessage> messages;
-  final bool isLoading;
+  final bool isTyping;
   final String? error;
 
   const ChatState({
     this.messages = const [],
-    this.isLoading = false,
+    this.isTyping = false,
     this.error,
   });
 
   ChatState copyWith({
     List<ChatMessage>? messages,
-    bool? isLoading,
+    bool? isTyping,
     String? error,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
-      isLoading: isLoading ?? this.isLoading,
+      isTyping: isTyping ?? this.isTyping,
       error: error,
     );
   }
@@ -32,8 +32,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
   final ChatService _chatService;
 
   ChatNotifier({ChatService? chatService})
-      : _chatService = chatService ?? ChatService(),
-        super(const ChatState()) {
+    : _chatService = chatService ?? ChatService(),
+      super(const ChatState()) {
     _initializeChat();
   }
 
@@ -41,7 +41,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
   void _initializeChat() {
     final welcomeMessage = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      text: 'Xin chào! Tôi là AI Tutor của bạn. Tôi có thể giúp bạn học tiếng Anh. Hãy hỏi tôi bất cứ điều gì!',
+      text:
+          'Xin chào! Tôi là AI Tutor của bạn. Tôi có thể giúp bạn học tiếng Anh. Hãy hỏi tôi bất cứ điều gì!',
       isUser: false,
       timestamp: DateTime.now(),
     );
@@ -64,7 +65,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     // Thêm tin nhắn user vào danh sách
     state = state.copyWith(
       messages: [...state.messages, userMessage],
-      isLoading: true,
+      isTyping: true,
       error: null,
     );
 
@@ -86,26 +87,22 @@ class ChatNotifier extends StateNotifier<ChatState> {
       // Thêm tin nhắn bot vào danh sách
       state = state.copyWith(
         messages: [...state.messages, botMessage],
-        isLoading: false,
+        isTyping: false,
       );
     } catch (e) {
       // Xử lý lỗi
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
-      
+      state = state.copyWith(isTyping: false, error: e.toString());
+
       // Thêm tin nhắn lỗi vào chat
       final errorMessage = ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        text: '❌ Xin lỗi, đã có lỗi xảy ra: ${e.toString()}\n\nVui lòng thử lại sau.',
+        text:
+            '❌ Xin lỗi, đã có lỗi xảy ra: ${e.toString()}\n\nVui lòng thử lại sau.',
         isUser: false,
         timestamp: DateTime.now(),
       );
-      
-      state = state.copyWith(
-        messages: [...state.messages, errorMessage],
-      );
+
+      state = state.copyWith(messages: [...state.messages, errorMessage]);
     }
   }
 
@@ -120,7 +117,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     if (lowerText.contains('xin chào') || lowerText.contains('chào')) {
       return 'Xin chào! 👋 Tôi có thể giúp gì cho bạn hôm nay?';
     }
-    
+
     // Tạm biệt
     if (lowerText.contains('bye') || lowerText.contains('goodbye')) {
       return 'Goodbye! 👋 See you next time! Keep practicing English!';
@@ -128,7 +125,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     if (lowerText.contains('tạm biệt')) {
       return 'Tạm biệt! 👋 Hẹn gặp lại bạn lần sau!';
     }
-    
+
     // Dịch thuật - Phát hiện pattern và dịch thẳng
     if (lowerText.contains('dịch') && lowerText.contains('sang tiếng anh')) {
       final textToDich = _extractTextBetweenQuotes(userText);
@@ -136,14 +133,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
         return _translateToEnglish(textToDich);
       }
     }
-    
-    if (lowerText.contains('translate') && lowerText.contains('to vietnamese')) {
+
+    if (lowerText.contains('translate') &&
+        lowerText.contains('to vietnamese')) {
       final textToTranslate = _extractTextBetweenQuotes(userText);
       if (textToTranslate.isNotEmpty) {
         return _translateToVietnamese(textToTranslate);
       }
     }
-    
+
     // Dịch chung chung
     if (lowerText.contains('translate')) {
       return 'Sure! I can translate for you. 🌐\n\n'
@@ -157,7 +155,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
           'Dịch "văn bản của bạn" sang tiếng Anh\n\n'
           'Ví dụ: Dịch "Xin chào" sang tiếng Anh';
     }
-    
+
     // Ngữ pháp
     if (lowerText.contains('grammar')) {
       return 'I\'d be happy to help with grammar! 📖\n\n'
@@ -177,7 +175,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
           '• Câu hỏi\n'
           '• Hoặc hỏi tôi về một quy tắc ngữ pháp cụ thể!';
     }
-    
+
     // Từ vựng
     if (lowerText.contains('vocabulary') || lowerText.contains('words')) {
       return 'Great! Let\'s learn some vocabulary! 📚\n\n'
@@ -197,9 +195,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
           '• Công việc & Học tập\n'
           '• Hoặc cho tôi biết chủ đề cụ thể!';
     }
-    
+
     // Phát âm
-    if (lowerText.contains('pronunciation') || lowerText.contains('pronounce')) {
+    if (lowerText.contains('pronunciation') ||
+        lowerText.contains('pronounce')) {
       return 'I can help you with pronunciation! 🗣️\n\n'
           'Please tell me which word you want to learn how to pronounce.\n\n'
           'Example: "How to pronounce \'comfortable\'?"';
@@ -209,7 +208,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
           'Vui lòng cho tôi biết từ nào bạn muốn học cách phát âm.\n\n'
           'Ví dụ: "Cách phát âm từ \'comfortable\'"';
     }
-    
+
     // Học nói
     if (lowerText.contains('conversation') || lowerText.contains('speak')) {
       return 'Let\'s practice conversation! 💬\n\n'
@@ -229,7 +228,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
           '• Kết bạn\n'
           '• Phỏng vấn xin việc';
     }
-    
+
     // Mặc định (phát hiện ngôn ngữ)
     final isVietnamese = _containsVietnamese(userText);
     if (isVietnamese) {
@@ -252,32 +251,34 @@ class ChatNotifier extends StateNotifier<ChatState> {
           'What would you like to learn today?';
     }
   }
-  
+
   /// Kiểm tra có phải tiếng Việt không
   bool _containsVietnamese(String text) {
-    final vietnameseChars = RegExp(r'[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]');
+    final vietnameseChars = RegExp(
+      r'[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]',
+    );
     return vietnameseChars.hasMatch(text.toLowerCase());
   }
-  
+
   /// Trích xuất text trong dấu ngoặc kép
   String _extractTextBetweenQuotes(String text) {
     // Tìm text trong dấu ngoặc kép "" hoặc ''
     final regexDouble = RegExp(r'"([^"]*)"');
     final regexSingle = RegExp(r"'([^']*)'");
-    
+
     final matchDouble = regexDouble.firstMatch(text);
     if (matchDouble != null && matchDouble.group(1) != null) {
       return matchDouble.group(1)!;
     }
-    
+
     final matchSingle = regexSingle.firstMatch(text);
     if (matchSingle != null && matchSingle.group(1) != null) {
       return matchSingle.group(1)!;
     }
-    
+
     return '';
   }
-  
+
   /// Mock translation Tiếng Việt -> English
   String _translateToEnglish(String vietnameseText) {
     final mockDict = {
@@ -297,10 +298,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
       'giáo viên': 'teacher',
       'học sinh': 'student',
     };
-    
+
     final lower = vietnameseText.toLowerCase().trim();
     final translation = mockDict[lower];
-    
+
     if (translation != null) {
       return '🇬🇧 Translation:\n\n'
           '📝 Vietnamese: "$vietnameseText"\n'
@@ -315,7 +316,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
           '• Tạm biệt → Goodbye';
     }
   }
-  
+
   /// Mock translation English -> Tiếng Việt
   String _translateToVietnamese(String englishText) {
     final mockDict = {
@@ -338,10 +339,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
       'teacher': 'giáo viên',
       'student': 'học sinh',
     };
-    
+
     final lower = englishText.toLowerCase().trim();
     final translation = mockDict[lower];
-    
+
     if (translation != null) {
       return '🇻🇳 Bản dịch:\n\n'
           '📝 English: "$englishText"\n'
@@ -356,7 +357,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
           '• Goodbye → Tạm biệt';
     }
   }
-  
+
   /// Tạo câu ví dụ tiếng Anh
   String _getExampleSentence(String word) {
     final examples = {
@@ -379,7 +380,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     };
     return examples[word] ?? 'Example not available.';
   }
-  
+
   /// Tạo câu ví dụ tiếng Việt
   String _getVietnameseExample(String word) {
     final examples = {
