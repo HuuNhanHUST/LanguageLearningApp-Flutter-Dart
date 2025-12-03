@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Audio Visualizer Demo",
+			"type": "shell",
+			"command": "flutter",
+			"args": [
+				"run",
+				"lib/audio_demo_main.dart",
+				"-d",
+				"chrome"
+			],
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}
