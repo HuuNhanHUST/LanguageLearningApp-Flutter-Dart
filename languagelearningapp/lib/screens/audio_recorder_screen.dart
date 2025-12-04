@@ -9,11 +9,13 @@ class AudioRecorderScreen extends ConsumerStatefulWidget {
   const AudioRecorderScreen({super.key});
 
   @override
-  ConsumerState<AudioRecorderScreen> createState() => _AudioRecorderScreenState();
+  ConsumerState<AudioRecorderScreen> createState() =>
+      _AudioRecorderScreenState();
 }
 
 class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
   late final RecorderController _recorderController;
+  late final TextEditingController _targetTextController;
 
   @override
   void initState() {
@@ -23,10 +25,12 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
       ..androidOutputFormat = AndroidOutputFormat.mpeg4
       ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
       ..sampleRate = 44100;
+    _targetTextController = TextEditingController();
   }
 
   @override
   void dispose() {
+    _targetTextController.dispose();
     _recorderController.dispose();
     super.dispose();
   }
@@ -43,7 +47,10 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Ghi Âm', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: const Text(
+            'Ghi Âm',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           backgroundColor: const Color(0xFF6366F1),
           foregroundColor: Colors.white,
           leading: IconButton(
@@ -71,10 +78,7 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                const Color(0xFF6366F1).withOpacity(0.1),
-                Colors.white,
-              ],
+              colors: [const Color(0xFF6366F1).withOpacity(0.1), Colors.white],
             ),
           ),
           child: SingleChildScrollView(
@@ -91,12 +95,17 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
                     child: audioState.isRecording
                         ? Container(
                             key: const ValueKey('waveformsPkg'),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 24,
+                            ),
                             width: double.infinity,
                             decoration: BoxDecoration(
                               color: Colors.indigo.withOpacity(0.06),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.2)),
+                              border: Border.all(
+                                color: const Color(0xFF6366F1).withOpacity(0.2),
+                              ),
                             ),
                             child: AudioWaveforms(
                               recorderController: _recorderController,
@@ -107,7 +116,9 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
                                 waveCap: StrokeCap.round,
                               ),
                               size: const Size(double.infinity, 80),
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
                             ),
                           )
                         : Container(
@@ -119,7 +130,10 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
                               gradient: LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
-                                colors: [Colors.indigo[400]!, Colors.indigo[600]!],
+                                colors: [
+                                  Colors.indigo[400]!,
+                                  Colors.indigo[600]!,
+                                ],
                               ),
                               boxShadow: [
                                 BoxShadow(
@@ -129,18 +143,26 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
                                 ),
                               ],
                             ),
-                            child: const Icon(Icons.mic_none, size: 90, color: Colors.white),
+                            child: const Icon(
+                              Icons.mic_none,
+                              size: 90,
+                              color: Colors.white,
+                            ),
                           ),
                   ),
 
                   const SizedBox(height: 40),
 
                   Text(
-                    audioState.isRecording ? 'Đang ghi âm...' : 'Sẵn sàng ghi âm',
+                    audioState.isRecording
+                        ? 'Đang ghi âm...'
+                        : 'Sẵn sàng ghi âm',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: audioState.isRecording ? Colors.red[600] : const Color(0xFF6366F1),
+                      color: audioState.isRecording
+                          ? Colors.red[600]
+                          : const Color(0xFF6366F1),
                     ),
                   ),
 
@@ -160,8 +182,13 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: audioState.isRecording ? Colors.red[600] : Colors.green[500],
-                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                        backgroundColor: audioState.isRecording
+                            ? Colors.red[600]
+                            : Colors.green[500],
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 40,
+                          vertical: 16,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(50),
                         ),
@@ -171,7 +198,9 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            audioState.isRecording ? Icons.stop_circle : Icons.fiber_manual_record,
+                            audioState.isRecording
+                                ? Icons.stop_circle
+                                : Icons.fiber_manual_record,
                             color: Colors.white,
                             size: 32,
                           ),
@@ -190,6 +219,22 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
                   ),
 
                   const SizedBox(height: 40),
+
+                  TextField(
+                    controller: _targetTextController,
+                    minLines: 1,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: 'Câu mẫu (tùy chọn)'.toUpperCase(),
+                      hintText: 'VD: I would like a cup of coffee please.',
+                      prefixIcon: const Icon(Icons.menu_book_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
 
                   if (audioState.audioPath != null) ...[
                     Container(
@@ -211,7 +256,11 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.check_circle, color: Colors.green[600], size: 28),
+                              Icon(
+                                Icons.check_circle,
+                                color: Colors.green[600],
+                                size: 28,
+                              ),
                               const SizedBox(width: 10),
                               Text(
                                 'Đã lưu thành công!',
@@ -235,12 +284,19 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    const Icon(Icons.audio_file, color: Color(0xFF6366F1), size: 20),
+                                    const Icon(
+                                      Icons.audio_file,
+                                      color: Color(0xFF6366F1),
+                                      size: 20,
+                                    ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         'File: ${audioState.audioPath!.split('/').last}',
-                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
@@ -251,14 +307,21 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
                                   future: File(audioState.audioPath!).length(),
                                   builder: (context, snapshot) {
                                     if (snapshot.hasData) {
-                                      final sizeKB = (snapshot.data! / 1024).toStringAsFixed(1);
+                                      final sizeKB = (snapshot.data! / 1024)
+                                          .toStringAsFixed(1);
                                       return Row(
                                         children: [
-                                          const Icon(Icons.storage, color: Color(0xFF6366F1), size: 20),
+                                          const Icon(
+                                            Icons.storage,
+                                            color: Color(0xFF6366F1),
+                                            size: 20,
+                                          ),
                                           const SizedBox(width: 8),
                                           Text(
                                             'Kích thước: $sizeKB KB',
-                                            style: const TextStyle(fontSize: 14),
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                            ),
                                           ),
                                         ],
                                       );
@@ -266,6 +329,108 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
                                     return const Text('Đang tải...');
                                   },
                                 ),
+
+                                const SizedBox(height: 16),
+
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    onPressed: audioState.isUploading
+                                        ? null
+                                        : () async {
+                                            await audioNotifier
+                                                .sendForTranscription(
+                                                  targetText:
+                                                      _targetTextController
+                                                          .text,
+                                                );
+                                          },
+                                    icon: audioState.isUploading
+                                        ? const SizedBox(
+                                            height: 18,
+                                            width: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation(
+                                                    Colors.white,
+                                                  ),
+                                            ),
+                                          )
+                                        : const Icon(Icons.cloud_upload),
+                                    label: Text(
+                                      audioState.isUploading
+                                          ? 'Đang gửi...'
+                                          : 'Gửi lên máy chủ STT',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF6366F1),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                if (audioState.transcript != null) ...[
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: const Color(0xFF6366F1),
+                                        width: 1.5,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(
+                                            0xFF6366F1,
+                                          ).withOpacity(0.08),
+                                          blurRadius: 8,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: const [
+                                            Icon(
+                                              Icons.text_snippet_outlined,
+                                              color: Color(0xFF6366F1),
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Kết quả STT',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          audioState.transcript!,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -294,7 +459,11 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.error_outline, color: Colors.red[600], size: 28),
+                              Icon(
+                                Icons.error_outline,
+                                color: Colors.red[600],
+                                size: 28,
+                              ),
                               const SizedBox(width: 10),
                               Text(
                                 'Lỗi',
@@ -309,7 +478,10 @@ class _AudioRecorderScreenState extends ConsumerState<AudioRecorderScreen> {
                           const SizedBox(height: 12),
                           Text(
                             audioState.errorMessage!,
-                            style: const TextStyle(color: Colors.red, fontSize: 14),
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                            ),
                           ),
                           const SizedBox(height: 12),
                           ElevatedButton(

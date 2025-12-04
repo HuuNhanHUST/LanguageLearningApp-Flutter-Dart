@@ -38,6 +38,7 @@ dependencies:
   
   # HTTP & API
   http: ^1.1.0
+  dio: ^5.7.0
   
   # State Management
   provider: ^6.0.0
