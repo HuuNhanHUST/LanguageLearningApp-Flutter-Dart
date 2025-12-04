@@ -261,19 +261,39 @@ exports.createWord = async (req, res) => {
  */
 exports.getWords = async (req, res) => {
   try {
-    const { topic, isMemorized, type, limit = 100 } = req.query;
+    const { 
+      topic, 
+      type, 
+      filter = 'all',  // 'all', 'memorized', 'not-memorized'
+      page = 1, 
+      limit = 20 
+    } = req.query;
+
+    // Parse pagination params
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
 
     // Build filter for UserWord
     const userWordFilter = { userId: req.user._id };
-    if (isMemorized !== undefined) {
-      userWordFilter.isMemorized = isMemorized === 'true';
+    
+    // Apply memorization filter
+    if (filter === 'memorized') {
+      userWordFilter.isMemorized = true;
+    } else if (filter === 'not-memorized') {
+      userWordFilter.isMemorized = false;
     }
+    // 'all' doesn't add any filter
 
-    // Get user's words
+    // Get total count
+    const total = await UserWord.countDocuments(userWordFilter);
+
+    // Get user's words with pagination
     const userWords = await UserWord.find(userWordFilter)
       .populate('wordId')
       .sort({ addedAt: -1 })
-      .limit(parseInt(limit));
+      .skip(skip)
+      .limit(limitNum);
 
     // Filter by word properties if needed
     let filteredWords = userWords;
@@ -302,12 +322,18 @@ exports.getWords = async (req, res) => {
       return wordObj;
     }).filter(Boolean);
 
+    // Calculate pagination info
+    const totalPages = Math.ceil(total / limitNum);
+
     res.status(200).json({
       success: true,
       message: 'Words retrieved successfully',
       data: {
         words: formattedWords,
-        count: formattedWords.length,
+        total: total,
+        page: pageNum,
+        totalPages: totalPages,
+        hasMore: pageNum < totalPages,
       },
     });
   } catch (error) {

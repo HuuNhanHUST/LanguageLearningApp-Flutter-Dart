@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'man_hinh_bai_hoc_phat_am.dart';
 import '../../../screens/text_scan_screen.dart';
 import '../../learning/widgets/daily_progress_widget.dart';
@@ -412,6 +413,10 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
                   ),
                 ),
               );
+            }
+            // Nếu là Từ vựng -> chuyển đến Vocabulary List Screen
+            else if (chuDe['ten'] == 'Từ vựng') {
+              context.push('/vocabulary');
             }
             // Nếu là Quét văn bản -> chuyển đến Text Scan Screen
             else if (chuDe['ten'] == 'Quét văn bản') {
