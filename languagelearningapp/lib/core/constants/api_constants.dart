@@ -14,7 +14,7 @@ class ApiConstants {
   //static const String baseUrl = 'http://10.0.2.2:5000/api'; // Android Emulator
   // static const String baseUrl = 'http://192.168.1.5:5000/api'; // Thiết bị vật lý
   // static const String baseUrl = 'http://localhost:5000/api'; // iOS Simulator
-  static const String baseUrl = 'http://172.20.10.12:5000/api';
+  static const String baseUrl = 'http://192.168.1.9:5000/api';
   // Auth Endpoints
   static const String register = '$baseUrl/users/register';
   static const String login = '$baseUrl/users/login';
@@ -34,6 +34,9 @@ class ApiConstants {
   // Word endpoints
   static const String wordLookup = '$baseUrl/words/lookup';
   static const String getWords = '$baseUrl/words';
+  static String deleteWord(String wordId) => '$baseUrl/words/$wordId';
+  static String updateWord(String wordId) => '$baseUrl/words/$wordId';
+  static String toggleMemorized(String wordId) => '$baseUrl/words/$wordId/memorize';
 
   // Chat endpoints
   static const String chat = '$baseUrl/chat';
