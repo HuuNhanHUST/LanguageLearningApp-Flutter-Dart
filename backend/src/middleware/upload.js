@@ -33,6 +33,7 @@ const ALLOWED_MIME_TYPES = new Set([
   'audio/m4a',
   'audio/x-m4a',
   'audio/aac',
+  'audio/mp4',
 ]);
 
 const upload = multer({

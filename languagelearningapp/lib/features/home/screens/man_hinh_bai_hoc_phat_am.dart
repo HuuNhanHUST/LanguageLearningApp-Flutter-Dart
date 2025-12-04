@@ -33,7 +33,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
   late FlutterSoundPlayer _player;
   bool _isPlaying = false;
   String? _previousAudioPath;
-  
+
   // Dữ liệu từ database
   List<WordModel> _cacBaiTap = [];
   bool _isLoadingWords = true;
@@ -46,7 +46,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
     _player = FlutterSoundPlayer();
     _khoiTaoPlayer();
     _taiDanhSachTu();
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final audioState = ref.read(audioRecorderProvider);
       if (audioState.audioPath != null) {
@@ -56,7 +56,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
       }
     });
   }
-  
+
   /// Tải danh sách từ vựng từ database
   Future<void> _taiDanhSachTu() async {
     try {
@@ -265,8 +265,6 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
     }
   }
 
-
-
   /// Chuyển sang bài tập tiếp theo
   Future<void> _chuyenBaiTapTiepTheo() async {
     // Mark word learned and earn XP
@@ -384,84 +382,87 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
         child: SafeArea(
           child: _isLoadingWords
               ? const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(color: Colors.white),
+                SizedBox(height: 16),
+                Text(
+                  'Đang tải bài học...',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          )
+              : _cacBaiTap.isEmpty
+              ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.white,
+                  size: 64,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Không có bài tập nào',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Quay lại'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF4F46E5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+              : Column(
+            children: [
+              // Header với nút back và tiến độ
+              _xayDungHeader(),
+
+              // Nội dung bài học
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircularProgressIndicator(color: Colors.white),
-                      SizedBox(height: 16),
-                      Text(
-                        'Đang tải bài học...',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      const SizedBox(height: 10),
+                      _xayDungTheTu(_cacBaiTap[_buocHienTai]),
+                      const SizedBox(height: 20),
+                      _xayDungHuongDan(_cacBaiTap[_buocHienTai]),
+                      const SizedBox(height: 25),
+                      _xayDungKhuVucGhiAm(
+                        audioState,
+                        _cacBaiTap[_buocHienTai],
                       ),
+                      const SizedBox(height: 25),
+                      _xayDungCacNutDieuKhien(),
+                      const SizedBox(height: 20),
                     ],
                   ),
-                )
-              : _cacBaiTap.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            color: Colors.white,
-                            size: 64,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Không có bài tập nào',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.arrow_back),
-                            label: const Text('Quay lại'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF4F46E5),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 16,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Column(
-                      children: [
-                        // Header với nút back và tiến độ
-                        _xayDungHeader(),
-
-                        // Nội dung bài học
-                        Expanded(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Column(
-                              children: [
-                                const SizedBox(height: 10),
-                                _xayDungTheTu(_cacBaiTap[_buocHienTai]),
-                                const SizedBox(height: 20),
-                                _xayDungHuongDan(_cacBaiTap[_buocHienTai]),
-                                const SizedBox(height: 25),
-                                _xayDungKhuVucGhiAm(audioState),
-                                const SizedBox(height: 25),
-                                _xayDungCacNutDieuKhien(),
-                                const SizedBox(height: 20),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -690,10 +691,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
               decoration: BoxDecoration(
                 color: const Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFF93C5FD),
-                  width: 1,
-                ),
+                border: Border.all(color: const Color(0xFF93C5FD), width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -873,8 +871,17 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
     );
   }
 
-  /// Xây dựng khu vực ghi âm
-  Widget _xayDungKhuVucGhiAm(AudioRecorderState audioState) {
+  /// Xây dựng khu vực ghi âm + gửi STT
+  Widget _xayDungKhuVucGhiAm(
+      AudioRecorderState audioState,
+      WordModel currentWord,
+      ) {
+    final recorderNotifier = ref.read(audioRecorderProvider.notifier);
+    final targetText =
+    (currentWord.example != null && currentWord.example!.trim().isNotEmpty)
+        ? currentWord.example!
+        : currentWord.word;
+
     // Hiển thông báo CHỈ KHI audioPath thay đổi từ null -> có giá trị
     if (!audioState.isRecording &&
         audioState.audioPath != null &&
@@ -888,6 +895,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
               duration: Duration(seconds: 2),
             ),
           );
+          recorderNotifier.sendForTranscription(targetText: targetText);
           // Cập nhật _previousAudioPath để không hiện lại
           _previousAudioPath = audioState.audioPath;
         }
@@ -931,6 +939,36 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
               fontWeight: audioState.isRecording
                   ? FontWeight.bold
                   : FontWeight.normal,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Câu mẫu cần đọc',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1D4ED8),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  targetText,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF0F172A),
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
           ),
           // Hiển thị thông tin file đã ghi
@@ -982,6 +1020,64 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
                         ),
                       ),
                     ],
+                  ),
+                ],
+              ),
+            ),
+            if (audioState.isUploading) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0E7FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      'Đang gửi lên máy chủ STT...',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+          if (audioState.transcript != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF22C55E)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Kết quả STT',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF15803D),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    audioState.transcript!,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF065F46),
+                    ),
                   ),
                 ],
               ),
