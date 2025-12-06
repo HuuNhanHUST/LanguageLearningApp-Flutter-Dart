@@ -9,8 +9,8 @@ import '../features/auth/services/auth_service.dart';
 /// Service phụ trách upload file audio lên endpoint STT và trả transcript.
 class SttService {
   SttService({Dio? dio, AuthService? authService})
-      : _dio = dio ?? Dio(_defaultOptions),
-        _authService = authService ?? AuthService();
+    : _dio = dio ?? Dio(_defaultOptions),
+      _authService = authService ?? AuthService();
 
   final Dio _dio;
   final AuthService _authService;
@@ -32,11 +32,19 @@ class SttService {
     }
 
     final token = await _authService.getAccessToken();
+
+    // 🔍 DEBUG: Log token
+    print('🎤 STT Token exists: ${token != null}');
+    if (token != null && token.length > 20) {
+      print('🎤 STT Token preview: ${token.substring(0, 20)}...');
+    }
+
     if (token == null) {
       throw Exception('Vui lòng đăng nhập để sử dụng STT');
     }
 
     final fileName = _extractFileName(audioPath);
+    final sttUrl = '${ApiConstants.baseUrl}/ai/stt';
 
     final formData = FormData.fromMap({
       'audio': await MultipartFile.fromFile(
@@ -48,15 +56,24 @@ class SttService {
         'targetText': targetText.trim(),
     });
 
+    // 🔍 DEBUG: Log request details
+    print('🎤 POST $sttUrl');
+    print('🎤 Audio file: $fileName');
+    print('🎤 Target text: $targetText');
+
     try {
       final response = await _dio.post(
-        '${ApiConstants.baseUrl}/ai/stt',
+        sttUrl,
         data: formData,
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
           contentType: 'multipart/form-data',
         ),
       );
+
+      // 🔍 DEBUG: Log response
+      print('🎤 Response Status: ${response.statusCode}');
+      print('🎤 Response Data: ${response.data}');
 
       final data = response.data as Map<String, dynamic>?;
       if (response.statusCode != 200 ||
@@ -81,7 +98,7 @@ class SttService {
       if (responseData is Map<String, dynamic>) {
         message =
             responseData['message'] as String? ??
-                responseData['error'] as String?;
+            responseData['error'] as String?;
       } else if (responseData is String) {
         message = responseData;
       }

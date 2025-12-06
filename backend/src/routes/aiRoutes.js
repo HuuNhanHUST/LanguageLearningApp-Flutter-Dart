@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post(
   '/stt',
-  auth,
+  // auth,  // ⚠️ TẠM THỜI comment để test - NHỚ BẬT LẠI SAU!
   upload.single('audio'),
   aiController.transcribeAudio,
 );
