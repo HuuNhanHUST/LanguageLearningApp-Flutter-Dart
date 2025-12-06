@@ -146,6 +146,8 @@ userSchema.virtual('fullName').get(function() {
 
 // Indexes for performance (email and username already have unique: true)
 userSchema.index({ 'learningLanguages.language': 1 });
+// Index for leaderboard queries (DESC order for top scores)
+userSchema.index({ xp: -1 });
 
 // Check if account is locked
 userSchema.virtual('isLocked').get(function() {

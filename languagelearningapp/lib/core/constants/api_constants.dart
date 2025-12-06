@@ -40,7 +40,6 @@ class ApiConstants {
       '$baseUrl/words/$wordId/memorize';
 
   // Chat endpoints
-  static const String chat = '$baseUrl/ai/chat';
   static const String chat = '$baseUrl/chat';
   static const String translate = '$baseUrl/chat/translate';
 
