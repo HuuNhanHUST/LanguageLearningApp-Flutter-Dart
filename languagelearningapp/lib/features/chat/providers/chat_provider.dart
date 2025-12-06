@@ -96,7 +96,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       );
     } catch (e) {
       // Xử lý lỗi
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(isTyping: false, error: e.toString());
 
       // Thêm tin nhắn lỗi vào chat
       final errorMessage = ChatMessage(
