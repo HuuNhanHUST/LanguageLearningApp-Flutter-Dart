@@ -5,23 +5,23 @@ import '../services/chat_service.dart';
 /// State cho chat
 class ChatState {
   final List<ChatMessage> messages;
-  final bool isLoading;
+  final bool isTyping;
   final String? error;
 
   const ChatState({
     this.messages = const [],
-    this.isLoading = false,
+    this.isTyping = false,
     this.error,
   });
 
   ChatState copyWith({
     List<ChatMessage>? messages,
-    bool? isLoading,
+    bool? isTyping,
     String? error,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
-      isLoading: isLoading ?? this.isLoading,
+      isTyping: isTyping ?? this.isTyping,
       error: error,
     );
   }
@@ -69,7 +69,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     // Thêm tin nhắn user vào danh sách
     state = state.copyWith(
       messages: [...state.messages, userMessage],
-      isLoading: true,
+      isTyping: true,
       error: null,
     );
 
@@ -92,7 +92,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       // Thêm tin nhắn bot vào danh sách
       state = state.copyWith(
         messages: [...state.messages, botMessage],
-        isLoading: false,
+        isTyping: false,
       );
     } catch (e) {
       // Xử lý lỗi

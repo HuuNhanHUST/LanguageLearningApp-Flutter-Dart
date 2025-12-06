@@ -14,6 +14,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
+  int _previousMessageCount = 0;
 
   @override
   void dispose() {
@@ -69,6 +70,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final chatState = ref.watch(chatProvider);
 
+    // Auto-scroll when new messages are added
+    if (chatState.messages.length > _previousMessageCount) {
+      _previousMessageCount = chatState.messages.length;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToBottom();
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -88,17 +97,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               children: [
                 Text(
                   'AI Tutor',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   'Trợ lý học tiếng Anh',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.normal,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
                 ),
               ],
             ),
@@ -120,10 +123,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF6366F1).withOpacity(0.05),
-              Colors.white,
-            ],
+            colors: [const Color(0xFF6366F1).withOpacity(0.05), Colors.white],
           ),
         ),
         child: Column(
@@ -144,7 +144,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ),
 
             // Loading indicator khi bot đang trả lời
-            if (chatState.isLoading)
+            if (chatState.isTyping)
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Row(
@@ -169,7 +169,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'AI đang trả lời...',
+                            'Bot đang gõ...',
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontSize: 13,
@@ -185,7 +185,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             // Ô nhập liệu
             ChatInput(
               onSendMessage: _handleSendMessage,
-              isEnabled: !chatState.isLoading,
+              isEnabled: !chatState.isTyping,
             ),
           ],
         ),
@@ -199,11 +199,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.chat_bubble_outline,
-            size: 80,
-            color: Colors.grey[300],
-          ),
+          Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
           Text(
             'Bắt đầu trò chuyện',
@@ -216,10 +212,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           const SizedBox(height: 8),
           Text(
             'Gửi tin nhắn để bắt đầu học với AI Tutor',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
         ],
       ),
