@@ -1,13 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'man_hinh_bai_hoc_phat_am.dart';
+import '../../../screens/text_scan_screen.dart';
+import '../../learning/widgets/daily_progress_widget.dart';
+import '../../learning/providers/learning_provider.dart';
 
 /// Màn hình Dashboard - Tab Học tập chính
 /// Hiển thị các bài học, categories, tiến độ giống ELSA
-class ManHinhHocTap extends StatelessWidget {
+class ManHinhHocTap extends ConsumerStatefulWidget {
   const ManHinhHocTap({super.key});
 
   @override
+  ConsumerState<ManHinhHocTap> createState() => _ManHinhHocTapState();
+}
+
+class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
+  @override
+  void initState() {
+    super.initState();
+    // Load learning progress khi màn hình được khởi tạo
+    Future.microtask(() => ref.read(learningProvider.notifier).loadProgress());
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final learningState = ref.watch(learningProvider);
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -18,25 +37,29 @@ class ManHinhHocTap extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header với avatar và greeting
-                _xayDungHeader(),
-                const SizedBox(height: 30),
-                
-                // Vòng tròn tiến độ tổng thể
-                _xayDungVongTronTienDo(),
-                const SizedBox(height: 30),
-                
+          child: learningState.isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header với avatar và greeting
+                      _xayDungHeader(),
+                      const SizedBox(height: 20),
+
+                      // Daily Progress Widget (NEW)
+                      const DailyProgressWidget(),
+                      const SizedBox(height: 20),
+
                 // Danh sách bài học
                 _xayDungTieuDe('Bài học của bạn'),
                 const SizedBox(height: 15),
                 _xayDungDanhSachBaiHoc(),
                 const SizedBox(height: 30),
-                
+
                 // Categories
                 _xayDungTieuDe('Chủ đề học tập'),
                 const SizedBox(height: 15),
@@ -130,7 +153,9 @@ class ManHinhHocTap extends StatelessWidget {
                     value: 0.86, // 86%
                     strokeWidth: 12,
                     backgroundColor: Colors.white.withOpacity(0.3),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.white,
+                    ),
                   ),
                 ),
                 const Column(
@@ -146,10 +171,7 @@ class ManHinhHocTap extends StatelessWidget {
                     ),
                     Text(
                       'Hoàn thành',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ],
                 ),
@@ -217,9 +239,24 @@ class ManHinhHocTap extends StatelessWidget {
   /// Xây dựng danh sách các bài học
   Widget _xayDungDanhSachBaiHoc() {
     final cacBaiHoc = [
-      {'ten': 'Bài học 1', 'chuDe': 'Phát âm /p/, /t/, /k/', 'tienDo': 0.8, 'mau': const Color(0xFF6C63FF)},
-      {'ten': 'Bài học 2', 'chuDe': 'Ngữ điệu câu hỏi', 'tienDo': 0.5, 'mau': const Color(0xFF4CAF50)},
-      {'ten': 'Bài học 3', 'chuDe': 'Từ vựng hàng ngày', 'tienDo': 0.3, 'mau': const Color(0xFFFF9800)},
+      {
+        'ten': 'Bài học 1',
+        'chuDe': 'Phát âm /p/, /t/, /k/',
+        'tienDo': 0.8,
+        'mau': const Color(0xFF6C63FF),
+      },
+      {
+        'ten': 'Bài học 2',
+        'chuDe': 'Ngữ điệu câu hỏi',
+        'tienDo': 0.5,
+        'mau': const Color(0xFF4CAF50),
+      },
+      {
+        'ten': 'Bài học 3',
+        'chuDe': 'Từ vựng hàng ngày',
+        'tienDo': 0.3,
+        'mau': const Color(0xFFFF9800),
+      },
     ];
 
     return Column(
@@ -242,7 +279,11 @@ class ManHinhHocTap extends StatelessWidget {
                   color: baiHoc['mau'] as Color,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.lightbulb, color: Colors.white, size: 30),
+                child: const Icon(
+                  Icons.lightbulb,
+                  color: Colors.white,
+                  size: 30,
+                ),
               ),
               const SizedBox(width: 15),
               // Thông tin bài học
@@ -273,7 +314,9 @@ class ManHinhHocTap extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value: baiHoc['tienDo'] as double,
                         backgroundColor: Colors.white.withOpacity(0.2),
-                        valueColor: AlwaysStoppedAnimation<Color>(baiHoc['mau'] as Color),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          baiHoc['mau'] as Color,
+                        ),
                         minHeight: 6,
                       ),
                     ),
@@ -282,13 +325,26 @@ class ManHinhHocTap extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               // Nút bắt đầu
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: baiHoc['mau'] as Color,
-                  shape: BoxShape.circle,
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ManHinhBaiHocPhatAm(
+                        tenBaiHoc: baiHoc['ten'] as String,
+                        chuDe: baiHoc['chuDe'] as String,
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: baiHoc['mau'] as Color,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.play_arrow, color: Colors.white),
                 ),
-                child: const Icon(Icons.play_arrow, color: Colors.white),
               ),
             ],
           ),
@@ -300,10 +356,36 @@ class ManHinhHocTap extends StatelessWidget {
   /// Xây dựng grid các chủ đề học tập
   Widget _xayDungDanhSachChuDe() {
     final cacChuDe = [
-      {'ten': 'Phát âm', 'soLuong': '24 bài', 'icon': Icons.mic, 'mau': const Color(0xFF6C63FF)},
-      {'ten': 'Ngữ pháp', 'soLuong': '18 bài', 'icon': Icons.book, 'mau': const Color(0xFF4CAF50)},
-      {'ten': 'Từ vựng', 'soLuong': '32 bài', 'icon': Icons.library_books, 'mau': const Color(0xFFFF9800)},
-      {'ten': 'Giao tiếp', 'soLuong': '15 bài', 'icon': Icons.chat, 'mau': const Color(0xFFE91E63)},
+      {
+        'ten': 'Phát âm',
+        'soLuong': '24 bài',
+        'icon': Icons.mic,
+        'mau': const Color(0xFF6C63FF),
+      },
+      {
+        'ten': 'Ngữ pháp',
+        'soLuong': '18 bài',
+        'icon': Icons.book,
+        'mau': const Color(0xFF4CAF50),
+      },
+      {
+        'ten': 'Từ vựng',
+        'soLuong': '32 bài',
+        'icon': Icons.library_books,
+        'mau': const Color(0xFFFF9800),
+      },
+      {
+        'ten': 'Giao tiếp',
+        'soLuong': '15 bài',
+        'icon': Icons.chat,
+        'mau': const Color(0xFFE91E63),
+      },
+      {
+        'ten': 'Quét văn bản',
+        'soLuong': 'OCR',
+        'icon': Icons.document_scanner,
+        'mau': const Color(0xFF00BCD4),
+      },
     ];
 
     return GridView.builder(
@@ -320,7 +402,7 @@ class ManHinhHocTap extends StatelessWidget {
         final chuDe = cacChuDe[index];
         return GestureDetector(
           onTap: () {
-            // Nếu là chủ đề Phát âm -> chuyển thẳng đến bài học (BỎ menu)
+            // Nếu là chủ đề Phát âm -> chuyển thẳng đến bài học
             if (chuDe['ten'] == 'Phát âm') {
               Navigator.push(
                 context,
@@ -331,8 +413,20 @@ class ManHinhHocTap extends StatelessWidget {
                   ),
                 ),
               );
-            } else {
-              // Các chủ đề khác hiển thị thông báo
+            }
+            // Nếu là Từ vựng -> chuyển đến Vocabulary List Screen
+            else if (chuDe['ten'] == 'Từ vựng') {
+              context.push('/vocabulary');
+            }
+            // Nếu là Quét văn bản -> chuyển đến Text Scan Screen
+            else if (chuDe['ten'] == 'Quét văn bản') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const TextScanScreen()),
+              );
+            }
+            // Các chủ đề khác hiển thị thông báo
+            else {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Chức năng ${chuDe['ten']} đang phát triển'),

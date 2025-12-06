@@ -5,7 +5,7 @@ import 'package:flutter_sound/flutter_sound.dart';
 import '../utils/audio_file_manager.dart';
 
 class AudioFilesScreen extends ConsumerStatefulWidget {
-  const AudioFilesScreen({Key? key}) : super(key: key);
+  const AudioFilesScreen({super.key});
 
   @override
   ConsumerState<AudioFilesScreen> createState() => _AudioFilesScreenState();
@@ -40,7 +40,7 @@ class _AudioFilesScreenState extends ConsumerState<AudioFilesScreen> {
 
   Future<void> _loadAudioFiles() async {
     setState(() => isLoading = true);
-    
+
     try {
       final files = await AudioFileManager.getAudioFiles();
       setState(() {
@@ -50,9 +50,9 @@ class _AudioFilesScreenState extends ConsumerState<AudioFilesScreen> {
     } catch (e) {
       setState(() => isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải file: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi tải file: $e')));
       }
     }
   }
@@ -94,9 +94,9 @@ class _AudioFilesScreenState extends ConsumerState<AudioFilesScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi phát audio: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi phát audio: $e')));
       }
     }
   }
@@ -106,9 +106,9 @@ class _AudioFilesScreenState extends ConsumerState<AudioFilesScreen> {
     if (success) {
       _loadAudioFiles(); // Refresh list
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã xóa file thành công')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Đã xóa file thành công')));
       }
     }
   }
@@ -136,9 +136,9 @@ class _AudioFilesScreenState extends ConsumerState<AudioFilesScreen> {
       final deletedCount = await AudioFileManager.deleteAllAudioFiles();
       _loadAudioFiles(); // Refresh list
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Đã xóa $deletedCount file')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Đã xóa $deletedCount file')));
       }
     }
   }
@@ -177,155 +177,172 @@ class _AudioFilesScreenState extends ConsumerState<AudioFilesScreen> {
             // Info Card
             Card(
               color: Colors.white.withOpacity(0.1),
-            margin: const EdgeInsets.all(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.info, color: Colors.white),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Thông tin thư mục',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+              margin: const EdgeInsets.all(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.info, color: Colors.white),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Thông tin thư mục',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Thư mục: ${tempDirectory ?? "Đang tải..."}',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  Text(
-                    'Số lượng file: ${audioFiles.length}',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Thư mục: ${tempDirectory ?? "Đang tải..."}',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    Text(
+                      'Số lượng file: ${audioFiles.length}',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          
-          // Files List
-          Expanded(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                : audioFiles.isEmpty
-                    ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.audiotrack, size: 64, color: Colors.white54),
-                            SizedBox(height: 16),
-                            Text(
-                              'Chưa có file ghi âm nào',
-                              style: TextStyle(color: Colors.white, fontSize: 16),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Hãy thử ghi âm một đoạn để xem file ở đây',
-                              style: TextStyle(color: Colors.white70, fontSize: 14),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: audioFiles.length,
-                        itemBuilder: (context, index) {
-                          final file = audioFiles[index];
-                          return FutureBuilder<Map<String, dynamic>>(
-                            future: AudioFileManager.getFileInfo(file),
-                            builder: (context, snapshot) {
-                              if (!snapshot.hasData) {
-                                return const ListTile(
-                                  title: Text('Đang tải...'),
-                                );
-                              }
 
-                              final fileInfo = snapshot.data!;
-                              final fileName = fileInfo['name'] ?? 'Unknown';
-                              final fileSize = fileInfo['sizeKB'] ?? '0';
-                              final created = fileInfo['created'] as DateTime?;
-
-                              final isPlayingThis = _isPlaying && _playingFilePath == file.path;
-                              
-                              return Card(
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 16, 
-                                  vertical: 4,
-                                ),
-                                color: Colors.white.withOpacity(0.1),
-                                child: ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: const Color(0xFF6C63FF),
-                                    child: Icon(
-                                      isPlayingThis ? Icons.pause : Icons.audiotrack,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  title: Text(
-                                    fileName,
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Kích thước: ${fileSize} KB',
-                                        style: const TextStyle(color: Colors.white70),
-                                      ),
-                                      if (created != null)
-                                        Text(
-                                          'Tạo lúc: ${_formatDateTime(created)}',
-                                          style: const TextStyle(color: Colors.white70),
-                                        ),
-                                    ],
-                                  ),
-                                  // NÚt nghe lại
-                                  onTap: () => _phatAudio(file.path),
-                                  trailing: PopupMenuButton<String>(
-                                    icon: const Icon(Icons.more_vert, color: Colors.white),
-                                    onSelected: (value) {
-                                      if (value == 'delete') {
-                                        _showDeleteConfirmation(file);
-                                      } else if (value == 'info') {
-                                        _showFileInfo(fileInfo);
-                                      }
-                                    },
-                                    itemBuilder: (context) => [
-                                      const PopupMenuItem(
-                                        value: 'info',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.info),
-                                            SizedBox(width: 8),
-                                            Text('Chi tiết'),
-                                          ],
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'delete',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.delete, color: Colors.red),
-                                            SizedBox(width: 8),
-                                            Text('Xóa'),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
+            // Files List
+            Expanded(
+              child: isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    )
+                  : audioFiles.isEmpty
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.audiotrack,
+                            size: 64,
+                            color: Colors.white54,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Chưa có file ghi âm nào',
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Hãy thử ghi âm một đoạn để xem file ở đây',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
+                    )
+                  : ListView.builder(
+                      itemCount: audioFiles.length,
+                      itemBuilder: (context, index) {
+                        final file = audioFiles[index];
+                        return FutureBuilder<Map<String, dynamic>>(
+                          future: AudioFileManager.getFileInfo(file),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return const ListTile(title: Text('Đang tải...'));
+                            }
+
+                            final fileInfo = snapshot.data!;
+                            final fileName = fileInfo['name'] ?? 'Unknown';
+                            final fileSize = fileInfo['sizeKB'] ?? '0';
+                            final created = fileInfo['created'] as DateTime?;
+
+                            final isPlayingThis =
+                                _isPlaying && _playingFilePath == file.path;
+
+                            return Card(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              color: Colors.white.withOpacity(0.1),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: const Color(0xFF6C63FF),
+                                  child: Icon(
+                                    isPlayingThis
+                                        ? Icons.pause
+                                        : Icons.audiotrack,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                title: Text(
+                                  fileName,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Kích thước: $fileSize KB',
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                    if (created != null)
+                                      Text(
+                                        'Tạo lúc: ${_formatDateTime(created)}',
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                // NÚt nghe lại
+                                onTap: () => _phatAudio(file.path),
+                                trailing: PopupMenuButton<String>(
+                                  icon: const Icon(
+                                    Icons.more_vert,
+                                    color: Colors.white,
+                                  ),
+                                  onSelected: (value) {
+                                    if (value == 'delete') {
+                                      _showDeleteConfirmation(file);
+                                    } else if (value == 'info') {
+                                      _showFileInfo(fileInfo);
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'info',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.info),
+                                          SizedBox(width: 8),
+                                          Text('Chi tiết'),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.delete, color: Colors.red),
+                                          SizedBox(width: 8),
+                                          Text('Xóa'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -375,7 +392,9 @@ class _AudioFilesScreenState extends ConsumerState<AudioFilesScreen> {
             const SizedBox(height: 8),
             Text('Đường dẫn: ${fileInfo['path']}'),
             const SizedBox(height: 8),
-            Text('Kích thước: ${AudioFileManager.formatFileSize(fileInfo['size'] ?? 0)}'),
+            Text(
+              'Kích thước: ${AudioFileManager.formatFileSize(fileInfo['size'] ?? 0)}',
+            ),
             const SizedBox(height: 8),
             Text('Tạo lúc: ${_formatDateTime(fileInfo['created'])}'),
             const SizedBox(height: 8),
@@ -394,10 +413,10 @@ class _AudioFilesScreenState extends ConsumerState<AudioFilesScreen> {
 
   String _formatDateTime(DateTime? dateTime) {
     if (dateTime == null) return 'Không rõ';
-    
+
     return '${dateTime.day}/${dateTime.month}/${dateTime.year} '
-           '${dateTime.hour.toString().padLeft(2, '0')}:'
-           '${dateTime.minute.toString().padLeft(2, '0')}:'
-           '${dateTime.second.toString().padLeft(2, '0')}';
+        '${dateTime.hour.toString().padLeft(2, '0')}:'
+        '${dateTime.minute.toString().padLeft(2, '0')}:'
+        '${dateTime.second.toString().padLeft(2, '0')}';
   }
 }

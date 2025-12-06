@@ -1,104 +1,64 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_sound/flutter_sound.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:languagelearningapp/services/audio_service.dart';
+import 'package:languagelearningapp/services/stt_service.dart';
 
 /// State class for Audio Recorder
 class AudioRecorderState {
   final bool isRecording;
+  final bool isUploading;
   final String? audioPath;
+  final String? transcript;
   final String? errorMessage;
 
   const AudioRecorderState({
     this.isRecording = false,
+    this.isUploading = false,
     this.audioPath,
+    this.transcript,
     this.errorMessage,
   });
 
   AudioRecorderState copyWith({
     bool? isRecording,
+    bool? isUploading,
     String? audioPath,
+    String? transcript,
     String? errorMessage,
+    bool clearAudioPath = false,
+    bool clearTranscript = false,
+    bool clearError = false,
   }) {
     return AudioRecorderState(
       isRecording: isRecording ?? this.isRecording,
-      audioPath: audioPath ?? this.audioPath,
-      errorMessage: errorMessage ?? this.errorMessage,
+      isUploading: isUploading ?? this.isUploading,
+      audioPath: clearAudioPath ? null : (audioPath ?? this.audioPath),
+      transcript: clearTranscript ? null : (transcript ?? this.transcript),
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
 }
 
-/// Audio Recorder Notifier
+/// Audio Recorder Notifier (delegates to AudioService)
 class AudioRecorderNotifier extends StateNotifier<AudioRecorderState> {
-  late final FlutterSoundRecorder _recorder;
+  final AudioService _audio = AudioService.instance;
+  final SttService _sttService = SttService();
 
   AudioRecorderNotifier() : super(const AudioRecorderState()) {
-    _recorder = FlutterSoundRecorder();
-    _initializeRecorder();
-  }
-
-  Future<void> _initializeRecorder() async {
-    await _recorder.openRecorder();
-  }
-
-  /// Check and request microphone permission
-  Future<bool> _requestPermission() async {
-    final status = await Permission.microphone.status;
-
-    if (status.isGranted) {
-      return true;
-    }
-
-    if (status.isDenied) {
-      final result = await Permission.microphone.request();
-      return result.isGranted;
-    }
-
-    if (status.isPermanentlyDenied) {
-      state = state.copyWith(
-        errorMessage:
-            'Microphone permission is permanently denied. Please enable it in settings.',
-      );
-      return false;
-    }
-
-    return false;
+    _audio.initRecorder();
   }
 
   /// Start recording audio
   Future<void> startRecording() async {
     try {
-      // Check permission
-      final hasPermission = await _requestPermission();
-      if (!hasPermission) {
-        print('❌ Microphone permission denied');
-        return;
-      }
-
-      // Check if already recording
-      if (_recorder.isRecording) {
-        print('⚠️ Already recording');
-        return;
-      }
-
-      // Get temporary directory
-      final directory = await getTemporaryDirectory();
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final filePath = '${directory.path}/audio_$timestamp.aac';
-
-      // Start recording
-      await _recorder.startRecorder(toFile: filePath, codec: Codec.aacADTS);
-
+      await _audio.startRecording();
       state = state.copyWith(
         isRecording: true,
-        audioPath: null,
-        errorMessage: null,
+        clearAudioPath: true,
+        clearTranscript: true,
+        clearError: true,
       );
-
-      print('🎤 Recording started: $filePath');
     } catch (e) {
-      print('❌ Error starting recording: $e');
       state = state.copyWith(errorMessage: 'Failed to start recording: $e');
     }
   }
@@ -106,46 +66,13 @@ class AudioRecorderNotifier extends StateNotifier<AudioRecorderState> {
   /// Stop recording audio
   Future<void> stopRecording() async {
     try {
-      // Check if recording
-      if (!_recorder.isRecording) {
-        print('⚠️ Not recording');
-        return;
-      }
-
-      // Stop recording and get the path
-      final path = await _recorder.stopRecorder();
-
-      if (path != null) {
-        final file = File(path);
-        final exists = await file.exists();
-
-        if (exists) {
-          final fileSize = await file.length();
-          print('✅ Recording stopped');
-          print('📁 File path: $path');
-          print('📊 File size: ${fileSize / 1024} KB');
-
-          state = state.copyWith(
-            isRecording: false,
-            audioPath: path,
-            errorMessage: null,
-          );
-        } else {
-          print('❌ Recording file does not exist');
-          state = state.copyWith(
-            isRecording: false,
-            errorMessage: 'Recording file was not created',
-          );
-        }
-      } else {
-        print('❌ Recording path is null');
-        state = state.copyWith(
-          isRecording: false,
-          errorMessage: 'Failed to save recording',
-        );
-      }
+      final path = await _audio.stopRecording();
+      state = state.copyWith(
+        isRecording: false,
+        audioPath: path,
+        clearError: true,
+      );
     } catch (e) {
-      print('❌ Error stopping recording: $e');
       state = state.copyWith(
         isRecording: false,
         errorMessage: 'Failed to stop recording: $e',
@@ -164,17 +91,22 @@ class AudioRecorderNotifier extends StateNotifier<AudioRecorderState> {
 
   /// Clear error message
   void clearError() {
-    state = state.copyWith(errorMessage: null);
+    state = state.copyWith(clearError: true);
   }
 
   /// Clear audio path (for re-recording)
   void clearAudioPath() {
-    // Reset về trạng thái ban đầu hoàn toàn
     state = const AudioRecorderState(
       isRecording: false,
       audioPath: null,
+      transcript: null,
       errorMessage: null,
     );
+  }
+
+  /// Clear transcript without affecting current audio
+  void clearTranscript() {
+    state = state.copyWith(clearTranscript: true);
   }
 
   /// Delete audio file and clear state
@@ -184,17 +116,38 @@ class AudioRecorderNotifier extends StateNotifier<AudioRecorderState> {
       if (await file.exists()) {
         await file.delete();
       }
-      // Reset state hoàn toàn
       clearAudioPath();
     } catch (e) {
       state = state.copyWith(errorMessage: 'Failed to delete audio file: $e');
     }
   }
 
-  /// Dispose recorder
+  /// Upload bản ghi hiện tại lên server STT và nhận transcript
+  Future<void> sendForTranscription({String? targetText}) async {
+    final path = state.audioPath;
+    if (path == null) {
+      state = state.copyWith(errorMessage: 'Chưa có bản ghi để gửi');
+      return;
+    }
+
+    state = state.copyWith(isUploading: true, clearError: true);
+    try {
+      final transcript = await _sttService.transcribe(
+        audioPath: path,
+        targetText: targetText,
+      );
+      state = state.copyWith(isUploading: false, transcript: transcript);
+    } catch (e) {
+      state = state.copyWith(
+        isUploading: false,
+        errorMessage: 'Gửi STT thất bại: $e',
+      );
+    }
+  }
+
   @override
   void dispose() {
-    _recorder.closeRecorder();
+    // Do not dispose the singleton service here to allow reuse across screens.
     super.dispose();
   }
 }
@@ -204,3 +157,8 @@ final audioRecorderProvider =
     StateNotifierProvider<AudioRecorderNotifier, AudioRecorderState>(
       (ref) => AudioRecorderNotifier(),
     );
+
+/// Stream provider for realtime amplitude (0..1) to drive visualizers
+final amplitudeStreamProvider = StreamProvider<double>((ref) {
+  return AudioService.instance.amplitudeStream;
+});

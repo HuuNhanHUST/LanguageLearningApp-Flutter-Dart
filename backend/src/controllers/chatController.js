@@ -13,7 +13,7 @@ class ChatController {
   }
 
   /**
-   * Chat với AI Tutor
+   * Chat với AI Tutor - với Context-Aware Conversation
    * POST /api/chat
    * Body: { message: string, conversationHistory?: array }
    */
@@ -38,6 +38,7 @@ Your capabilities:
 4. Help with pronunciation tips
 5. Practice conversation scenarios
 6. Answer questions about English learning
+7. **Remember previous context** - When user says "Nó là gì?" or asks follow-up questions, refer to what was discussed before
 
 Guidelines:
 - Be friendly, encouraging, and patient
@@ -48,21 +49,38 @@ Guidelines:
 - Format responses nicely with emojis when appropriate
 - If user asks in Vietnamese, respond in Vietnamese
 - If user asks in English, respond in English
-- Always be helpful and educational`;
+- Always be helpful and educational
+- **IMPORTANT**: Pay attention to previous conversation context and provide relevant answers based on what was discussed
+- When user refers to something mentioned before (like "nó", "từ đó", etc.), look at the conversation history to understand what they're referring to`;
 
-      // Xây dựng conversation context
-      const conversationContext = conversationHistory
-        .map(msg => `${msg.isUser ? 'User' : 'AI'}: ${msg.text}`)
-        .join('\n');
+      // Giới hạn token: Chỉ lấy 5-10 tin nhắn gần nhất để tránh tốn token
+      const HISTORY_LIMIT = 10;
+      const recentHistory = conversationHistory.slice(-HISTORY_LIMIT);
 
-      const fullPrompt = `${systemPrompt}
+      // Xây dựng conversation context với format rõ ràng hơn
+      let conversationContext = '';
+      if (recentHistory.length > 0) {
+        conversationContext = recentHistory
+          .map(msg => `${msg.isUser ? 'User' : 'AI Tutor'}: ${msg.text}`)
+          .join('\n');
+      }
 
-Previous conversation:
+      // Tạo prompt với context được tích hợp ngay trong system prompt
+      const fullPrompt = conversationContext 
+        ? `${systemPrompt}
+
+=== Previous Conversation Context ===
 ${conversationContext}
+=== End of Context ===
+
+Current User Message: ${message}
+
+AI Tutor Response (remember the context above when answering):`
+        : `${systemPrompt}
 
 User: ${message}
 
-AI:`;
+AI Tutor:`;
 
       // Gọi Gemini API - Dùng gemini-2.5-flash (tên chính xác)
       const model = this.client.getGenerativeModel({ 
@@ -70,6 +88,8 @@ AI:`;
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 1000,
+          topP: 0.95,
+          topK: 40,
         }
       });
 
@@ -90,6 +110,57 @@ AI:`;
       return res.status(500).json({
         success: false,
         message: 'Failed to process chat message',
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Translate text to Vietnamese
+   * POST /api/chat/translate
+   * Body: { text: string }
+   */
+  async translate(req, res) {
+    try {
+      const { text } = req.body;
+
+      if (!text || text.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Text is required',
+        });
+      }
+
+      const prompt = `Translate the following text to Vietnamese. Only return the Vietnamese translation, no explanations or extra text:
+
+${text}`;
+
+      const model = this.client.getGenerativeModel({ 
+        model: 'gemini-2.5-flash',
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 2000,
+        }
+      });
+
+      const result = await model.generateContent(prompt);
+      const response = result.response;
+      const translation = response.text();
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          originalText: text,
+          translatedText: translation.trim(),
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+    } catch (error) {
+      console.error('❌ Translation error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to translate text',
         error: error.message,
       });
     }

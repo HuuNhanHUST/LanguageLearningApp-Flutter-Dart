@@ -8,6 +8,8 @@ import 'features/auth/screens/register_screen.dart';
 import 'features/auth/screens/splash_screen.dart';
 import 'features/home/screens/man_hinh_chinh.dart';
 import 'features/home/screens/profile_edit_screen.dart';
+import 'features/words/providers/word_provider.dart';
+import 'features/words/screens/vocabulary_list_screen.dart';
 import 'screens/audio_recorder_screen.dart';
 import 'screens/text_scan_screen.dart';
 
@@ -24,6 +26,9 @@ class MyApp extends StatelessWidget {
       providers: [
         provider.ChangeNotifierProvider(
           create: (_) => AuthProvider()..initialize(),
+        ),
+        provider.ChangeNotifierProvider(
+          create: (_) => WordProvider(),
         ),
       ],
       child: provider.Consumer<AuthProvider>(
@@ -116,6 +121,10 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: '/profile/edit',
           builder: (context, state) => const ProfileEditScreen(),
+        ),
+        GoRoute(
+          path: '/vocabulary',
+          builder: (context, state) => const VocabularyListScreen(),
         ),
       ],
     );

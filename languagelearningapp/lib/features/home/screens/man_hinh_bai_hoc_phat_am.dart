@@ -6,8 +6,12 @@ import '../../../providers/audio_recorder_provider.dart';
 import '../../../widgets/audio_recorder_button.dart';
 import '../../../screens/audio_files_screen.dart';
 import '../../words/models/word_model.dart';
+import '../../words/models/pronunciation_result_model.dart';
 import '../../words/services/pronunciation_service.dart';
 import '../../words/services/text_to_speech_service.dart';
+import '../../words/widgets/pronunciation_result_widget.dart';
+import '../../learning/providers/learning_provider.dart';
+import '../../learning/widgets/level_up_dialog.dart';
 
 /// Màn hình Bài học Phát âm
 /// Cho phép học và thực hành phát âm với ghi âm
@@ -31,12 +35,16 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
   late FlutterSoundPlayer _player;
   bool _isPlaying = false;
   String? _previousAudioPath;
-  
+
   // Dữ liệu từ database
   List<WordModel> _cacBaiTap = [];
   bool _isLoadingWords = true;
   final PronunciationService _pronunciationService = PronunciationService();
   final TextToSpeechService _ttsService = TextToSpeechService();
+
+  // Biến lưu kết quả chấm điểm
+  PronunciationResultModel? _pronunciationResult;
+  bool _isScoring = false; // Đang chấm điểm
 
   @override
   void initState() {
@@ -44,7 +52,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
     _player = FlutterSoundPlayer();
     _khoiTaoPlayer();
     _taiDanhSachTu();
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final audioState = ref.read(audioRecorderProvider);
       if (audioState.audioPath != null) {
@@ -54,20 +62,58 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
       }
     });
   }
-  
+
   /// Tải danh sách từ vựng từ database
   Future<void> _taiDanhSachTu() async {
     try {
-      final words = await _pronunciationService.getWordsForPronunciation(
-        // Không filter topic để lấy tất cả từ của user
-        // Không truyền limit để hiển thị tất cả từ từ database
-      );
-      
+      // Load learned words first - wrapped in Future to avoid provider modification during build
+      await Future.microtask(() async {
+        await ref.read(learningProvider.notifier).loadProgress();
+      });
+      final learningState = ref.read(learningProvider);
+
+      // Get all words from database
+      final allWords = await _pronunciationService.getWordsForPronunciation();
+
+      // Filter out learned words
+      final unlearnedWords = allWords
+          .where((word) => !learningState.learnedWordIds.contains(word.id))
+          .toList();
+
+      // Shuffle again to ensure different words each time
+      unlearnedWords.shuffle();
+
+      // Limit to remaining daily words (max 30/day)
+      final wordsToShow = unlearnedWords.take(learningState.remaining).toList();
+
       if (mounted) {
         setState(() {
-          _cacBaiTap = words;
+          _cacBaiTap = wordsToShow;
           _isLoadingWords = false;
         });
+
+        // Show info if no words available
+        if (wordsToShow.isEmpty) {
+          if (!learningState.canLearnMore) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  '🎉 Bạn đã hoàn thành 30 từ hôm nay! Quay lại vào ngày mai nhé!',
+                ),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          } else if (unlearnedWords.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('🎓 Bạn đã học hết tất cả từ vựng!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -225,10 +271,54 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
     }
   }
 
-
-
   /// Chuyển sang bài tập tiếp theo
-  void _chuyenBaiTapTiepTheo() {
+  Future<void> _chuyenBaiTapTiepTheo() async {
+    // Mark word learned and earn XP
+    if (_buocHienTai < _cacBaiTap.length) {
+      final currentWord = _cacBaiTap[_buocHienTai];
+      final result = await ref
+          .read(learningProvider.notifier)
+          .markWordLearned(currentWord.id);
+
+      if (result['success'] == true && mounted) {
+        // Show snackbar for XP gained
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    result['message'] as String,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF6C63FF),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        // Show level up dialog if leveled up
+        if (result['leveledUp'] == true) {
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            await showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => LevelUpDialog(
+                newLevel: result['newLevel'] as int,
+                xpGained: result['xpGained'] as int,
+              ),
+            );
+          }
+        }
+      }
+    }
+
     if (_buocHienTai < _cacBaiTap.length - 1) {
       // Dừng phát audio nếu đang phát
       if (_isPlaying) {
@@ -242,11 +332,83 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
         _buocHienTai++;
         _isPlaying = false;
         _previousAudioPath = null; // Reset để box xanh biến mất
+        _pronunciationResult = null; // Reset kết quả chấm điểm
+        _isScoring = false; // Reset trạng thái chấm điểm
       });
     } else {
       // Hoàn thành bài học - chỉ pop về
       _hoanThanhBaiHoc();
     }
+  }
+
+  /// Chấm điểm phát âm khi có transcript từ STT
+  Future<void> _chamDiemPhatAm({
+    required String target,
+    required String transcript,
+  }) async {
+    setState(() {
+      _isScoring = true;
+      _pronunciationResult = null;
+    });
+
+    try {
+      final result = await _pronunciationService.comparePronunciation(
+        target: target,
+        transcript: transcript,
+      );
+
+      if (mounted) {
+        setState(() {
+          _pronunciationResult = result;
+          _isScoring = false;
+        });
+
+        // Hiển thị dialog kết quả
+        await _hienThiKetQuaChamDiem(result);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isScoring = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Lỗi chấm điểm: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Hiển thị dialog kết quả chấm điểm
+  Future<void> _hienThiKetQuaChamDiem(PronunciationResultModel result) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: SingleChildScrollView(
+          child: PronunciationResultWidget(
+            result: result,
+            onRetry: () {
+              Navigator.pop(context);
+              // Reset để thử lại
+              ref.read(audioRecorderProvider.notifier).clearAudioPath();
+              setState(() {
+                _previousAudioPath = null;
+                _pronunciationResult = null;
+              });
+            },
+            onNext: () {
+              Navigator.pop(context);
+              _chuyenBaiTapTiepTheo();
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   /// Quay lại bài tập trước
@@ -264,6 +426,8 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
         _buocHienTai--;
         _isPlaying = false;
         _previousAudioPath = null; // Reset về trạng thái ban đầu
+        _pronunciationResult = null; // Reset kết quả chấm điểm
+        _isScoring = false; // Reset trạng thái chấm điểm
       });
     }
   }
@@ -315,67 +479,70 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
                   ),
                 )
               : _cacBaiTap.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            color: Colors.white,
-                            size: 64,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Không có bài tập nào',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.arrow_back),
-                            label: const Text('Quay lại'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF4F46E5),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 16,
-                              ),
-                            ),
-                          ),
-                        ],
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.white,
+                        size: 64,
                       ),
-                    )
-                  : Column(
-                      children: [
-                        // Header với nút back và tiến độ
-                        _xayDungHeader(),
-
-                        // Nội dung bài học
-                        Expanded(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Column(
-                              children: [
-                                const SizedBox(height: 10),
-                                _xayDungTheTu(_cacBaiTap[_buocHienTai]),
-                                const SizedBox(height: 20),
-                                _xayDungHuongDan(_cacBaiTap[_buocHienTai]),
-                                const SizedBox(height: 25),
-                                _xayDungKhuVucGhiAm(audioState),
-                                const SizedBox(height: 25),
-                                _xayDungCacNutDieuKhien(),
-                                const SizedBox(height: 20),
-                              ],
-                            ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Không có bài tập nào',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back),
+                        label: const Text('Quay lại'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF4F46E5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 16,
                           ),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
+                  children: [
+                    // Header với nút back và tiến độ
+                    _xayDungHeader(),
+
+                    // Nội dung bài học
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 10),
+                            _xayDungTheTu(_cacBaiTap[_buocHienTai]),
+                            const SizedBox(height: 20),
+                            _xayDungHuongDan(_cacBaiTap[_buocHienTai]),
+                            const SizedBox(height: 25),
+                            _xayDungKhuVucGhiAm(
+                              audioState,
+                              _cacBaiTap[_buocHienTai],
+                            ),
+                            const SizedBox(height: 25),
+                            _xayDungCacNutDieuKhien(),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      ),
                     ),
+                  ],
+                ),
         ),
       ),
     );
@@ -604,10 +771,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
               decoration: BoxDecoration(
                 color: const Color(0xFFEFF6FF),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFF93C5FD),
-                  width: 1,
-                ),
+                border: Border.all(color: const Color(0xFF93C5FD), width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -714,81 +878,17 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
     );
   }
 
-  Widget _xayDungTheTuCu(Map<String, String> baiTap) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(30),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            baiTap['tu']!,
-            style: const TextStyle(
-              fontSize: 48,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2D1B69),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            baiTap['phienAm']!,
-            style: TextStyle(
-              fontSize: 24,
-              color: Colors.grey[600],
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-          const SizedBox(height: 15),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF6C63FF).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              baiTap['nghia']!,
-              style: const TextStyle(
-                fontSize: 18,
-                color: Color(0xFF6C63FF),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('🔊 Đang phát âm mẫu...')),
-              );
-            },
-            icon: const Icon(Icons.volume_up),
-            label: const Text('Nghe phát âm'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6C63FF),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(25),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  /// Xây dựng khu vực ghi âm + gửi STT + chấm điểm
+  Widget _xayDungKhuVucGhiAm(
+    AudioRecorderState audioState,
+    WordModel currentWord,
+  ) {
+    final recorderNotifier = ref.read(audioRecorderProvider.notifier);
+    final targetText =
+        (currentWord.example != null && currentWord.example!.trim().isNotEmpty)
+        ? currentWord.example!
+        : currentWord.word;
 
-  /// Xây dựng khu vực ghi âm
-  Widget _xayDungKhuVucGhiAm(AudioRecorderState audioState) {
     // Hiển thông báo CHỈ KHI audioPath thay đổi từ null -> có giá trị
     if (!audioState.isRecording &&
         audioState.audioPath != null &&
@@ -802,6 +902,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
               duration: Duration(seconds: 2),
             ),
           );
+          recorderNotifier.sendForTranscription(targetText: targetText);
           // Cập nhật _previousAudioPath để không hiện lại
           _previousAudioPath = audioState.audioPath;
         }
@@ -847,6 +948,37 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
                   : FontWeight.normal,
             ),
           ),
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Câu mẫu cần đọc',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1D4ED8),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  targetText,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF0F172A),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // Hiển thị thông tin file đã ghi
           if (audioState.audioPath != null) ...[
             const SizedBox(height: 20),
@@ -897,6 +1029,140 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
                       ),
                     ],
                   ),
+                ],
+              ),
+            ),
+            if (audioState.isUploading) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0E7FF),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      'Đang gửi lên máy chủ STT...',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+          if (audioState.transcript != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDCFCE7),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF22C55E)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Kết quả STT',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF15803D),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    audioState.transcript!,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF065F46),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Nút chấm điểm
+                  if (!_isScoring && _pronunciationResult == null)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          _chamDiemPhatAm(
+                            target: targetText,
+                            transcript: audioState.transcript!,
+                          );
+                        },
+                        icon: const Icon(Icons.grade),
+                        label: const Text('Chấm điểm phát âm'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  // Đang chấm điểm
+                  if (_isScoring)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              'Đang chấm điểm...',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // Hiển thị kết quả ngắn gọn
+                  if (_pronunciationResult != null)
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.star, color: Color(0xFFFBBF24)),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Điểm: ${_pronunciationResult!.score.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              _hienThiKetQuaChamDiem(_pronunciationResult!);
+                            },
+                            child: const Text('Xem chi tiết'),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),

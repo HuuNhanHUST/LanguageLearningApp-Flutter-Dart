@@ -51,6 +51,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   /// Gửi tin nhắn từ user
+  ///
+  /// SCRUM-30: Gửi tin nhắn kèm conversation history để AI nhớ ngữ cảnh
+  /// - AI có thể hiểu khi user hỏi "Nó là gì?" dựa trên tin nhắn trước
+  /// - Chỉ gửi toàn bộ messages, ChatService sẽ giới hạn 10 tin nhắn gần nhất
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty) return;
 
@@ -70,10 +74,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
     );
 
     try {
-      // Gọi API thật với Gemini AI
+      // SCRUM-30: Gọi API với conversation history
+      // Backend sẽ tích hợp history vào system prompt để AI nhớ context
       final aiResponse = await _chatService.sendMessage(
         message: text.trim(),
-        conversationHistory: state.messages,
+        conversationHistory: state.messages, // Gửi toàn bộ history
       );
 
       // Tạo tin nhắn bot từ API response
@@ -91,7 +96,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       );
     } catch (e) {
       // Xử lý lỗi
-      state = state.copyWith(isTyping: false, error: e.toString());
+      state = state.copyWith(isLoading: false, error: e.toString());
 
       // Thêm tin nhắn lỗi vào chat
       final errorMessage = ChatMessage(
