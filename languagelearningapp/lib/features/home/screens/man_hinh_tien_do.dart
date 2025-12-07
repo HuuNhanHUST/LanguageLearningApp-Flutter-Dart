@@ -5,11 +5,25 @@ import '../../learning/providers/learning_provider.dart';
 
 /// Màn hình Tiến độ
 /// Hiển thị biểu đồ radar (pentagon), thống kê học tập
-class ManHinhTienDo extends ConsumerWidget {
+class ManHinhTienDo extends ConsumerStatefulWidget {
   const ManHinhTienDo({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ManHinhTienDo> createState() => _ManHinhTienDoState();
+}
+
+class _ManHinhTienDoState extends ConsumerState<ManHinhTienDo> {
+  @override
+  void initState() {
+    super.initState();
+    // Load progress when screen opens
+    Future.microtask(() {
+      ref.read(learningProvider.notifier).loadProgress();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final learningState = ref.watch(learningProvider);
     
     return Scaffold(

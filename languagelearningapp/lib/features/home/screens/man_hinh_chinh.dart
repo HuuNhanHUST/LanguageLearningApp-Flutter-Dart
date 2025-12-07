@@ -19,16 +19,6 @@ class _ManHinhChinhState extends State<ManHinhChinh> {
   // Chỉ số tab hiện tại (0-4)
   int _chiSoTabHienTai = 0;
 
-  // Danh sách các màn hình tương ứng với mỗi tab
-  final List<Widget> _cacManHinh = [
-    const ManHinhHocTap(),    // Tab 0: Học tập
-    const ManHinhTuDien(),    // Tab 1: Từ điển
-    const ChatScreen(),       // Tab 2: Chat AI
-    const ManHinhTimKiem(),   // Tab 3: Tìm kiếm
-    const ManHinhTienDo(),    // Tab 4: Tiến độ
-    const ManHinhHoSo(),      // Tab 5: Hồ sơ
-  ];
-
   /// Xử lý khi người dùng tap vào tab
   void _khi_tap_tab(int chiSo) {
     setState(() {
@@ -36,11 +26,31 @@ class _ManHinhChinhState extends State<ManHinhChinh> {
     });
   }
 
+  /// Build màn hình theo tab - TẠO MỚI mỗi lần để reload data
+  Widget _buildScreen() {
+    switch (_chiSoTabHienTai) {
+      case 0:
+        return const ManHinhHocTap();
+      case 1:
+        return const ManHinhTuDien();
+      case 2:
+        return const ChatScreen();
+      case 3:
+        return const ManHinhTimKiem();
+      case 4:
+        return const ManHinhTienDo();
+      case 5:
+        return const ManHinhHoSo();
+      default:
+        return const ManHinhHocTap();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       // Hiển thị màn hình tương ứng với tab được chọn
-      body: _cacManHinh[_chiSoTabHienTai],
+      body: _buildScreen(),
       
       // Thanh điều hướng phía dưới
       bottomNavigationBar: BottomNavigationBar(

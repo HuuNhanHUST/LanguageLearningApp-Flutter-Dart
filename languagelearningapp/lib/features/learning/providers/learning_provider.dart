@@ -73,6 +73,7 @@ class LearningNotifier extends StateNotifier<LearningState> {
 
   /// Load initial progress và learned words
   Future<void> loadProgress() async {
+    print('🔄 LearningProvider: Starting loadProgress()...');
     state = state.copyWith(isLoading: true, error: null);
 
     try {
@@ -85,6 +86,14 @@ class LearningNotifier extends StateNotifier<LearningState> {
       final progress = results[0] as Map<String, dynamic>;
       final learnedWords = results[1] as List<String>;
 
+      print('✅ LearningProvider: Received data from backend:');
+      print('   - XP: ${progress['xp']}');
+      print('   - Level: ${progress['level']}');
+      print('   - Total: ${progress['totalWordsLearned']}');
+      print('   - Today: ${progress['wordsLearnedToday']}');
+      print('   - Streak: ${progress['streak']}');
+      print('   - Learned words: ${learnedWords.length}');
+
       state = state.copyWith(
         totalWordsLearned: progress['totalWordsLearned'] as int,
         wordsLearnedToday: progress['wordsLearnedToday'] as int,
@@ -96,7 +105,10 @@ class LearningNotifier extends StateNotifier<LearningState> {
         learnedWordIds: learnedWords,
         isLoading: false,
       );
+      
+      print('✅ LearningProvider: State updated successfully!');
     } catch (e) {
+      print('❌ LearningProvider: Error loading progress: $e');
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),
@@ -130,8 +142,9 @@ class LearningNotifier extends StateNotifier<LearningState> {
         totalWordsLearned: result['totalWordsLearned'] as int,
         wordsLearnedToday: result['wordsLearnedToday'] as int,
         remaining: result['remaining'] as int,
-        xp: result['xp'] as int,
+        xp: result['totalXp'] as int,
         level: result['level'] as int,
+        streak: result['streak'] as int,
         learnedWordIds: [...state.learnedWordIds, wordId],
       );
 
@@ -165,6 +178,11 @@ class LearningNotifier extends StateNotifier<LearningState> {
   /// Reset error
   void clearError() {
     state = state.copyWith(error: null);
+  }
+
+  /// Reset state về mặc định (dùng khi logout)
+  void reset() {
+    state = LearningState();
   }
 }
 
