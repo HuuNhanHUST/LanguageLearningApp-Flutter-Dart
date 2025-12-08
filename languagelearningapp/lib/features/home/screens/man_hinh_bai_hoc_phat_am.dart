@@ -51,6 +51,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
     super.initState();
     _player = FlutterSoundPlayer();
     _khoiTaoPlayer();
+    // Load progress và words khi màn hình khởi tạo
     _taiDanhSachTu();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -65,11 +66,19 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
 
   /// Tải danh sách từ vựng từ database
   Future<void> _taiDanhSachTu() async {
+    setState(() {
+      _isLoadingWords = true;
+    });
+
     try {
-      // Load learned words first - wrapped in Future to avoid provider modification during build
+      // LUÔN reload progress từ server để đảm bảo data mới nhất
       await Future.microtask(() async {
         await ref.read(learningProvider.notifier).loadProgress();
       });
+      
+      // Đợi một chút để đảm bảo state đã update
+      await Future.delayed(const Duration(milliseconds: 100));
+      
       final learningState = ref.read(learningProvider);
 
       // Get all words from database

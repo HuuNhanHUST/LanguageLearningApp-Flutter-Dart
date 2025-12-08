@@ -6,11 +6,26 @@ import '../../auth/services/auth_service.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../learning/providers/learning_provider.dart';
+import '../../user/user.dart'; // Import user stats widget
 
 /// Màn hình Hồ sơ người dùng
 /// Hiển thị thông tin cá nhân, cài đặt
-class ManHinhHoSo extends ConsumerWidget {
+class ManHinhHoSo extends ConsumerStatefulWidget {
   const ManHinhHoSo({super.key});
+
+  @override
+  ConsumerState<ManHinhHoSo> createState() => _ManHinhHoSoState();
+}
+
+class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
+  @override
+  void initState() {
+    super.initState();
+    // Load progress when screen opens
+    Future.microtask(() {
+      ref.read(learningProvider.notifier).loadProgress();
+    });
+  }
 
   Future<User?> _loadUserProfile(AuthService authService) async {
     try {
@@ -23,7 +38,7 @@ class ManHinhHoSo extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final authService = AuthService();
     final learningState = ref.watch(learningProvider);
 
@@ -75,6 +90,10 @@ class ManHinhHoSo extends ConsumerWidget {
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
+                        // User Statistics Card (NEW: API stats)
+                        const UserStatsCard(),
+                        const SizedBox(height: 20),
+
                         // Thành tích
                         _xayDungThanhTich(learningState),
                         const SizedBox(height: 30),
@@ -364,17 +383,17 @@ class ManHinhHoSo extends ConsumerWidget {
             onPressed: () async {
               Navigator.pop(context);
               try {
-                // Đăng xuất qua AuthService
+                // 1. Reset learning provider state TRƯỚC
+                ref.read(learningProvider.notifier).reset();
+                
+                // 2. Đăng xuất qua AuthService
                 await authService.logout();
                 
-                // Cập nhật AuthProvider
+                // 3. Cập nhật AuthProvider (sẽ trigger router rebuild)
                 final authProvider = context.read<AuthProvider>();
                 authProvider.logout();
                 
-                // Chuyển về trang login
-                if (context.mounted) {
-                  context.go('/login');
-                }
+                // Router sẽ tự động redirect về login
               } catch (e) {
                 print('Logout error: $e');
                 // Vẫn chuyển về login nếu có lỗi

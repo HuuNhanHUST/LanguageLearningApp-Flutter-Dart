@@ -86,8 +86,16 @@ class LearningService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
+        print('📦 Backend response for progress: $data');
+        
         if (data['success'] == true) {
-          return data['data'] as Map<String, dynamic>;
+          final progressData = data['data'];
+          if (progressData == null) {
+            print('❌ Backend returned null data field');
+            throw Exception('Backend returned null data');
+          }
+          print('✅ Progress data parsed successfully');
+          return progressData as Map<String, dynamic>;
         } else {
           throw Exception(data['message'] ?? 'Failed to get progress');
         }
@@ -131,11 +139,26 @@ class LearningService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
+        print('📦 Backend response for learned-words: $data');
+        
         if (data['success'] == true) {
-          final learnedWords =
-              (data['data']['learnedWords'] as List<dynamic>)
-                  .map((id) => id.toString())
-                  .toList();
+          final dataField = data['data'];
+          if (dataField == null) {
+            print('⚠️ Backend returned null data field, using empty list');
+            return []; // Return empty list if no data
+          }
+          
+          // Backend returns 'learnedWordIds', not 'learnedWords'
+          final learnedWordsRaw = dataField['learnedWordIds'];
+          if (learnedWordsRaw == null) {
+            print('⚠️ Backend returned null learnedWordIds array, using empty list');
+            return []; // Return empty list if learnedWords is null
+          }
+          
+          final learnedWords = (learnedWordsRaw as List<dynamic>)
+              .map((id) => id.toString())
+              .toList();
+          print('✅ Parsed ${learnedWords.length} learned words');
           return learnedWords;
         } else {
           throw Exception(data['message'] ?? 'Failed to get learned words');
