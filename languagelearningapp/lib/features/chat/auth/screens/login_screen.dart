@@ -6,7 +6,7 @@ import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../services/facebook_auth_service.dart';
 import '../services/google_auth_service.dart';
-import '../../learning/providers/learning_provider.dart';
+import '../../../learning/providers/learning_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -35,7 +35,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    final authProvider = provider.Provider.of<AuthProvider>(context, listen: false);
+    final authProvider = provider.Provider.of<AuthProvider>(
+      context,
+      listen: false,
+    );
 
     final success = await authProvider.login(
       email: _emailController.text.trim(),
@@ -46,7 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (success) {
         // Load progress sau khi login thành công
         await ref.read(learningProvider.notifier).loadProgress();
-        
+
         // Kiểm tra mounted sau async operation
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -86,7 +89,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           await authService.saveAuthDataFromSocial(userData);
 
           // Update AuthProvider with user data
-          final authProvider = provider.Provider.of<AuthProvider>(context, listen: false);
+          final authProvider = provider.Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          );
           authProvider.setAuthenticatedUser(userData['user']);
 
           // Load progress sau khi login Facebook thành công
@@ -289,7 +295,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: _isFacebookLoading ? null : _handleFacebookLogin,
+                      onPressed: _isFacebookLoading
+                          ? null
+                          : _handleFacebookLogin,
                       icon: const Icon(Icons.facebook, size: 20),
                       label: _isFacebookLoading
                           ? const SizedBox(
@@ -320,7 +328,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               try {
                                 final userData =
                                     await GoogleAuthService.signInWithGoogle();
-                                if (mounted) setState(() => _isGoogleLoading = false);
+                                if (mounted)
+                                  setState(() => _isGoogleLoading = false);
 
                                 if (userData != null && userData.isNotEmpty) {
                                   // Save to SharedPreferences using AuthService
@@ -329,19 +338,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     userData,
                                   );
 
-                                  final authProvider = provider.Provider.of<AuthProvider>(context, listen: false);
+                                  final authProvider =
+                                      provider.Provider.of<AuthProvider>(
+                                        context,
+                                        listen: false,
+                                      );
                                   authProvider.setAuthenticatedUser(
                                     userData['user'],
                                   );
 
                                   // Load progress sau khi login Google thành công
-                                  await ref.read(learningProvider.notifier).loadProgress();
+                                  await ref
+                                      .read(learningProvider.notifier)
+                                      .loadProgress();
 
                                   // Kiểm tra mounted sau async operation
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Google login successful!'),
+                                        content: Text(
+                                          'Google login successful!',
+                                        ),
                                         backgroundColor: Colors.green,
                                       ),
                                     );

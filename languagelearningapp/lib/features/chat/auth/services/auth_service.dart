@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../../core/constants/api_constants.dart';
-import '../../../core/constants/storage_keys.dart';
+import '../../../../core/constants/api_constants.dart';
+import '../../../../core/constants/storage_keys.dart';
 import '../models/user_model.dart';
 
 class AuthService {
@@ -217,7 +217,9 @@ class AuthService {
   /// Check if user is logged in
   Future<bool> isLoggedIn() async {
     try {
-      final storedToken = await _secureStorage.read(key: StorageKeys.accessToken);
+      final storedToken = await _secureStorage.read(
+        key: StorageKeys.accessToken,
+      );
       final prefs = await SharedPreferences.getInstance();
       final isMarkedLoggedIn = prefs.getBool(StorageKeys.isLoggedIn) ?? false;
 
@@ -300,7 +302,9 @@ class AuthService {
 
       await prefs.setBool(StorageKeys.isLoggedIn, true);
 
-      print('✅ Social login data saved (tokens in Secure Storage, user data in SharedPreferences)');
+      print(
+        '✅ Social login data saved (tokens in Secure Storage, user data in SharedPreferences)',
+      );
     } catch (e) {
       print('❌ Failed to save social auth data: $e');
       throw Exception('Failed to save social auth data: $e');

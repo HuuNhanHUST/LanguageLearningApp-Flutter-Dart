@@ -2,7 +2,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../../core/constants/api_constants.dart';
+import '../../../../core/constants/api_constants.dart';
 
 class GoogleAuthService {
   // Use your Web client ID here so Android returns an idToken
@@ -25,19 +25,28 @@ class GoogleAuthService {
       final auth = await account.authentication;
       final idToken = auth.idToken;
       // Debug info: print returned tokens
-      print('Google Authentication debug -> idToken: ${auth.idToken}, accessToken: ${auth.accessToken}, serverAuthCode: ${auth.serverAuthCode}');
+      print(
+        'Google Authentication debug -> idToken: ${auth.idToken}, accessToken: ${auth.accessToken}, serverAuthCode: ${auth.serverAuthCode}',
+      );
 
       if (idToken == null) {
         // If idToken is missing, provide clearer message including serverAuthCode (if available)
-        throw Exception('Missing idToken from Google. serverAuthCode: ${auth.serverAuthCode}');
+        throw Exception(
+          'Missing idToken from Google. serverAuthCode: ${auth.serverAuthCode}',
+        );
       }
 
       // Gửi idToken tới backend
-      final response = await http.post(
-        Uri.parse('${ApiConstants.baseUrl}/users/auth/google'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'googleToken': idToken}),
-      ).timeout(const Duration(seconds: 30), onTimeout: () => throw Exception('Backend request timeout'));
+      final response = await http
+          .post(
+            Uri.parse('${ApiConstants.baseUrl}/users/auth/google'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'googleToken': idToken}),
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () => throw Exception('Backend request timeout'),
+          );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);

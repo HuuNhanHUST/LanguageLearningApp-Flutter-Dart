@@ -2,7 +2,7 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../../core/constants/api_constants.dart';
+import '../../../../core/constants/api_constants.dart';
 
 class FacebookAuthService {
   static const _storage = FlutterSecureStorage();
