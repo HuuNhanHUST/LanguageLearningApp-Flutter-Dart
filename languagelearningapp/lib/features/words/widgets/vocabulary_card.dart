@@ -1,6 +1,28 @@
 import 'package:flutter/material.dart';
 import '../models/word_model.dart';
 
+// Constant styles for better performance
+const _kWordStyle = TextStyle(
+  fontSize: 20,
+  fontWeight: FontWeight.bold,
+  color: Colors.black87,
+);
+
+const _kMeaningStyle = TextStyle(
+  fontSize: 16,
+  color: Color(0xFF616161),
+  height: 1.4,
+);
+
+const _kExampleStyle = TextStyle(
+  fontSize: 14,
+  color: Color(0xFF1565C0),
+  fontStyle: FontStyle.italic,
+  height: 1.4,
+);
+
+const _kTopicStyle = TextStyle(fontSize: 12, color: Color(0xFF757575));
+
 class VocabularyCard extends StatelessWidget {
   final WordModel word;
   final VoidCallback? onDelete;
@@ -18,9 +40,7 @@ class VocabularyCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -51,16 +71,7 @@ class VocabularyCard extends StatelessWidget {
                       // Word and type
                       Row(
                         children: [
-                          Expanded(
-                            child: Text(
-                              word.word,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
+                          Expanded(child: Text(word.word, style: _kWordStyle)),
                           if (word.type.isNotEmpty)
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -85,14 +96,7 @@ class VocabularyCard extends StatelessWidget {
                       const SizedBox(height: 8),
 
                       // Meaning
-                      Text(
-                        word.meaning,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[700],
-                          height: 1.4,
-                        ),
-                      ),
+                      Text(word.meaning, style: _kMeaningStyle),
 
                       // Example
                       if (word.example != null && word.example!.isNotEmpty) ...[
@@ -119,12 +123,7 @@ class VocabularyCard extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   word.example!,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.blue.shade900,
-                                    fontStyle: FontStyle.italic,
-                                    height: 1.4,
-                                  ),
+                                  style: _kExampleStyle,
                                 ),
                               ),
                             ],
@@ -143,13 +142,7 @@ class VocabularyCard extends StatelessWidget {
                               color: Colors.grey[600],
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              word.topic!,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
+                            Text(word.topic!, style: _kTopicStyle),
                           ],
                         ),
                       ],
@@ -178,7 +171,9 @@ class VocabularyCard extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Xác nhận xóa'),
-        content: Text('Bạn có chắc chắn muốn xóa từ "${word.word}" khỏi danh sách?'),
+        content: Text(
+          'Bạn có chắc chắn muốn xóa từ "${word.word}" khỏi danh sách?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -189,9 +184,7 @@ class VocabularyCard extends StatelessWidget {
               Navigator.of(context).pop();
               onDelete?.call();
             },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Xóa'),
           ),
         ],

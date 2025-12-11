@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart' as provider;
 
+import '../../../widgets/cached_avatar.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../learning/providers/learning_provider.dart';
@@ -13,7 +14,8 @@ class ManHinhHoSoNguoiDung extends ConsumerStatefulWidget {
   const ManHinhHoSoNguoiDung({super.key});
 
   @override
-  ConsumerState<ManHinhHoSoNguoiDung> createState() => _ManHinhHoSoNguoiDungState();
+  ConsumerState<ManHinhHoSoNguoiDung> createState() =>
+      _ManHinhHoSoNguoiDungState();
 }
 
 class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
@@ -84,7 +86,10 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
               color: const Color(0xFF6C63FF),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 24,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -141,9 +146,11 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
     }
 
     final progress = xpNeeded == 0
-      ? 0.0
-      : (xpProgress / xpNeeded).clamp(0.0, 1.0);
-    final xpLabel = xpNeeded > 0 ? '$xpProgress/$xpNeeded XP' : '${xpTotal ?? 0} XP';
+        ? 0.0
+        : (xpProgress / xpNeeded).clamp(0.0, 1.0);
+    final xpLabel = xpNeeded > 0
+        ? '$xpProgress/$xpNeeded XP'
+        : '${xpTotal ?? 0} XP';
 
     return Container(
       width: double.infinity,
@@ -168,20 +175,11 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
         children: [
           Row(
             children: [
-              CircleAvatar(
+              CachedAvatar(
+                imageUrl: user?.avatar,
                 radius: 36,
+                fallbackText: user?.firstName ?? 'U',
                 backgroundColor: Colors.white,
-                backgroundImage: user?.avatar != null ? NetworkImage(user!.avatar!) : null,
-                child: user?.avatar == null
-                    ? Text(
-                        (user?.firstName.isNotEmpty == true ? user!.firstName[0] : 'U').toUpperCase(),
-                        style: const TextStyle(
-                          color: Color(0xFF6C63FF),
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -203,7 +201,10 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
@@ -211,11 +212,18 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.stars, color: Colors.amber, size: 18),
+                          const Icon(
+                            Icons.stars,
+                            color: Colors.amber,
+                            size: 18,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             'Level ${learningState.level}',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                       ),
@@ -226,7 +234,9 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
               IconButton(
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Chức năng chỉnh sửa đang phát triển.')),
+                    const SnackBar(
+                      content: Text('Chức năng chỉnh sửa đang phát triển.'),
+                    ),
                   );
                 },
                 icon: const Icon(Icons.edit, color: Colors.white),
@@ -234,7 +244,10 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
             ],
           ),
           const SizedBox(height: 20),
-          Text('Tiến độ level', style: TextStyle(color: Colors.white.withOpacity(0.8))),
+          Text(
+            'Tiến độ level',
+            style: TextStyle(color: Colors.white.withOpacity(0.8)),
+          ),
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
@@ -242,15 +255,23 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
               value: progress,
               minHeight: 14,
               backgroundColor: Colors.white.withOpacity(0.2),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Colors.cyanAccent,
+              ),
             ),
           ),
           const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('XP hiện tại: $xpLabel', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              Text('Lv.${learningState.level + 1}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              Text(
+                'XP hiện tại: $xpLabel',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              Text(
+                'Lv.${learningState.level + 1}',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -305,11 +326,13 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
     final streakValue =
         _asInt(stats?['streak']) ?? user?.streak ?? learningState.streak;
     final xpValue = _asInt(stats?['xp']) ?? user?.xp ?? learningState.xp;
-    final vocabValue = _asInt(vocabStats?['total']) ??
+    final vocabValue =
+        _asInt(vocabStats?['total']) ??
         _asInt(stats?['totalWords']) ??
         _asInt(stats?['totalWordsLearned']) ??
         learningState.totalWordsLearned;
-    final minutesValue = _asInt(stats?['minutes']) ??
+    final minutesValue =
+        _asInt(stats?['minutes']) ??
         _asInt(stats?['minutesStudied']) ??
         _asInt(stats?['studyMinutes']);
 

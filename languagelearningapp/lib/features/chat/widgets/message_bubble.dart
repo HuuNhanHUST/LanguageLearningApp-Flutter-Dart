@@ -1,22 +1,35 @@
 import 'package:flutter/material.dart';
 import '../models/message_model.dart';
 
+// Constant styles for better performance
+const _kUserMessageStyle = TextStyle(
+  color: Colors.white,
+  fontSize: 15,
+  height: 1.4,
+);
+
+const _kBotMessageStyle = TextStyle(
+  color: Colors.black87,
+  fontSize: 15,
+  height: 1.4,
+);
+
+const _kUserColor = Color(0xFF6366F1);
+
 /// Widget hiển thị bubble tin nhắn
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
 
-  const MessageBubble({
-    super.key,
-    required this.message,
-  });
+  const MessageBubble({super.key, required this.message});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
-        mainAxisAlignment:
-            message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: message.isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // Avatar cho AI Bot (bên trái)
@@ -34,7 +47,7 @@ class MessageBubble extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: message.isUser
-                    ? const Color(0xFF6366F1) // Màu xanh cho user
+                    ? _kUserColor // Màu xanh cho user
                     : Colors.grey[200], // Màu xám cho bot
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
@@ -56,14 +69,12 @@ class MessageBubble extends StatelessWidget {
                   // Nội dung tin nhắn
                   Text(
                     message.text,
-                    style: TextStyle(
-                      color: message.isUser ? Colors.white : Colors.black87,
-                      fontSize: 15,
-                      height: 1.4,
-                    ),
+                    style: message.isUser
+                        ? _kUserMessageStyle
+                        : _kBotMessageStyle,
                   ),
                   const SizedBox(height: 4),
-                  
+
                   // Timestamp
                   Text(
                     _formatTime(message.timestamp),
@@ -96,7 +107,7 @@ class MessageBubble extends StatelessWidget {
       height: 32,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isUser ? const Color(0xFF6366F1) : Colors.grey[300],
+        color: isUser ? _kUserColor : Colors.grey[300],
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),

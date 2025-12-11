@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../widgets/cached_avatar.dart';
 import '../../auth/services/auth_service.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -113,7 +114,11 @@ class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
   }
 
   /// Xây dựng header với avatar và thông tin user
-  Widget _xayDungHeader(User? user, BuildContext context, LearningState learningState) {
+  Widget _xayDungHeader(
+    User? user,
+    BuildContext context,
+    LearningState learningState,
+  ) {
     final displayName = user != null ? user.fullName : 'Bạn chưa đăng nhập';
     final email = user?.email ?? '';
 
@@ -136,21 +141,12 @@ class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
                 ),
               ],
             ),
-            child: user?.avatar != null
-                ? ClipOval(
-                    child: Image.network(
-                      user!.avatar!,
-                      fit: BoxFit.cover,
-                      width: 100,
-                      height: 100,
-                      errorBuilder: (c, e, s) => const Icon(
-                        Icons.person,
-                        size: 50,
-                        color: Color(0xFF6C63FF),
-                      ),
-                    ),
-                  )
-                : const Icon(Icons.person, size: 50, color: Color(0xFF6C63FF)),
+            child: CachedAvatar(
+              imageUrl: user?.avatar,
+              radius: 50,
+              fallbackText: displayName,
+              backgroundColor: const Color(0xFF6C63FF),
+            ),
           ),
           const SizedBox(height: 15),
 
@@ -385,14 +381,14 @@ class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
               try {
                 // 1. Reset learning provider state TRƯỚC
                 ref.read(learningProvider.notifier).reset();
-                
+
                 // 2. Đăng xuất qua AuthService
                 await authService.logout();
-                
+
                 // 3. Cập nhật AuthProvider (sẽ trigger router rebuild)
                 final authProvider = context.read<AuthProvider>();
                 authProvider.logout();
-                
+
                 // Router sẽ tự động redirect về login
               } catch (e) {
                 print('Logout error: $e');

@@ -74,6 +74,7 @@ dependencies:
   
   # JSON Serialization
   json_annotation: ^4.9.0
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:
