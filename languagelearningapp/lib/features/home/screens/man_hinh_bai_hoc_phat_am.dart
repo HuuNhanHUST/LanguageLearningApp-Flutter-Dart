@@ -75,10 +75,10 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
       await Future.microtask(() async {
         await ref.read(learningProvider.notifier).loadProgress();
       });
-      
+
       // Đợi một chút để đảm bảo state đã update
       await Future.delayed(const Duration(milliseconds: 100));
-      
+
       final learningState = ref.read(learningProvider);
 
       // Get all words from database
@@ -287,7 +287,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
       final currentWord = _cacBaiTap[_buocHienTai];
       final result = await ref
           .read(learningProvider.notifier)
-          .markWordLearned(currentWord.id);
+          .markWordLearned(currentWord.id, activityType: 'pronunciation');
 
       if (result['success'] == true && mounted) {
         // Show snackbar for XP gained
@@ -873,15 +873,25 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
           ),
           const SizedBox(height: 12),
           Text(
-            word.example != null && word.example!.isNotEmpty
-                ? 'Hãy đọc to và rõ ràng. Tập trung vào cách phát âm từng âm tiết trong câu ví dụ.'
-                : 'Hãy đọc to và rõ ràng từ "${word.word}". Chú ý đến phát âm và ngữ điệu.',
+            'Hãy đọc to và rõ ràng từ "${word.word}". Tập trung vào từng phụ âm và nguyên âm trọng tâm.',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 15,
               height: 1.6,
             ),
           ),
+          if (word.example != null && word.example!.trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Câu ví dụ tham khảo: ${word.example!.trim()}',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                height: 1.5,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -893,10 +903,8 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
     WordModel currentWord,
   ) {
     final recorderNotifier = ref.read(audioRecorderProvider.notifier);
-    final targetText =
-        (currentWord.example != null && currentWord.example!.trim().isNotEmpty)
-        ? currentWord.example!
-        : currentWord.word;
+    final targetText = currentWord.word.trim();
+    final sampleSentence = currentWord.example?.trim();
 
     // Hiển thông báo CHỈ KHI audioPath thay đổi từ null -> có giá trị
     if (!audioState.isRecording &&
@@ -969,7 +977,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Câu mẫu cần đọc',
+                  'Từ cần đọc',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1D4ED8),
@@ -979,11 +987,30 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
                 Text(
                   targetText,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                     color: Color(0xFF0F172A),
-                    height: 1.4,
                   ),
                 ),
+                if (sampleSentence != null && sampleSentence.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Câu ví dụ tham khảo',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1D4ED8),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    sampleSentence,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF0F172A),
+                      height: 1.4,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

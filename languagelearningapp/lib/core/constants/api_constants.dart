@@ -14,7 +14,7 @@ class ApiConstants {
   //static const String baseUrl = 'http://10.0.2.2:5000/api'; // Android Emulator
   // static const String baseUrl = 'http://192.168.1.5:5000/api'; // Thiết bị vật lý
   // static const String baseUrl = 'http://localhost:5000/api'; // iOS Simulator
-  static const String baseUrl = 'http://172.16.0.57:5000/api';
+  static const String baseUrl = 'http://192.168.1.85:5000/api';
   // Auth Endpoints
   static const String register = '$baseUrl/users/register';
   static const String login = '$baseUrl/users/login';
@@ -47,6 +47,10 @@ class ApiConstants {
   static const String pronunciationCompare = '$baseUrl/pronunciation/compare';
   static const String pronunciationScore = '$baseUrl/pronunciation/score';
   static const String pronunciationErrors = '$baseUrl/pronunciation/errors';
+
+  // Grammar lesson endpoints
+  static const String grammarQuestions = '$baseUrl/grammar/questions';
+  static const String grammarGenerate = '$baseUrl/grammar/questions/generate';
 
   // Headers
   static Map<String, String> getHeaders({String? token}) {

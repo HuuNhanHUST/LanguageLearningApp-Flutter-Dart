@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="d196d190-0cfa-4d65-82e0-69df4f5a061f" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/languagelearningapp/lib/core/constants/api_constants.dart" beforeDir="false" afterPath="$PROJECT_DIR$/languagelearningapp/lib/core/constants/api_constants.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/languagelearningapp/lib/features/home/screens/man_hinh_bai_hoc_phat_am.dart" beforeDir="false" afterPath="$PROJECT_DIR$/languagelearningapp/lib/features/home/screens/man_hinh_bai_hoc_phat_am.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/languagelearningapp/lib/features/home/screens/man_hinh_hoc_tap.dart" beforeDir="false" afterPath="$PROJECT_DIR$/languagelearningapp/lib/features/home/screens/man_hinh_hoc_tap.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/languagelearningapp/lib/features/learning/providers/learning_provider.dart" beforeDir="false" afterPath="$PROJECT_DIR$/languagelearningapp/lib/features/learning/providers/learning_provider.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/languagelearningapp/lib/features/learning/services/learning_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/languagelearningapp/lib/features/learning/services/learning_service.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/languagelearningapp/pubspec.lock" beforeDir="false" afterPath="$PROJECT_DIR$/languagelearningapp/pubspec.lock" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 2
+}</component>
+  <component name="ProjectId" id="36JWkcTYUbj51R5S83OFjIbJOSU" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "dart.analysis.tool.window.visible": "false",
+    "git-widget-placeholder": "main",
+    "kotlin-language-version-configured": "true",
+    "settings.editor.selected.configurable": "dart.settings",
+    "show.migrate.to.gradle.popup": "false"
+  }
+}]]></component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="d196d190-0cfa-4d65-82e0-69df4f5a061f" name="Changes" comment="" />
+      <created>1764725298963</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1764725298963</updated>
+    </task>
+    <servers />
+  </component>
+</project>
