@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart' as provider;
 import 'man_hinh_bai_hoc_phat_am.dart';
+import 'man_hinh_bai_hoc_ngu_phap.dart';
 import '../../../screens/text_scan_screen.dart';
 import '../../learning/widgets/daily_progress_widget.dart';
 import '../../learning/providers/learning_provider.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../auth/models/user_model.dart';
 
 /// Màn hình Dashboard - Tab Học tập chính
 /// Hiển thị các bài học, categories, tiến độ giống ELSA
@@ -26,6 +30,8 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
   @override
   Widget build(BuildContext context) {
     final learningState = ref.watch(learningProvider);
+    final authProvider = provider.Provider.of<AuthProvider>(context);
+    final user = authProvider.user;
 
     return Scaffold(
       body: Container(
@@ -47,33 +53,42 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Header với avatar và greeting
-                      _xayDungHeader(),
+                      _xayDungHeader(user, learningState),
+                      const SizedBox(height: 16),
+
+                      // XP Progress Bar
+                      _xayDungThanhXp(learningState),
                       const SizedBox(height: 20),
 
                       // Daily Progress Widget (NEW)
                       const DailyProgressWidget(),
                       const SizedBox(height: 20),
 
-                // Danh sách bài học
-                _xayDungTieuDe('Bài học của bạn'),
-                const SizedBox(height: 15),
-                _xayDungDanhSachBaiHoc(),
-                const SizedBox(height: 30),
+                      // Danh sách bài học
+                      _xayDungTieuDe('Bài học của bạn'),
+                      const SizedBox(height: 15),
+                      _xayDungDanhSachBaiHoc(),
+                      const SizedBox(height: 30),
 
-                // Categories
-                _xayDungTieuDe('Chủ đề học tập'),
-                const SizedBox(height: 15),
-                _xayDungDanhSachChuDe(),
-              ],
-            ),
-          ),
+                      // Categories
+                      _xayDungTieuDe('Chủ đề học tập'),
+                      const SizedBox(height: 15),
+                      _xayDungDanhSachChuDe(),
+                    ],
+                  ),
+                ),
         ),
       ),
     );
   }
 
   /// Xây dựng header với avatar và lời chào
-  Widget _xayDungHeader() {
+  Widget _xayDungHeader(User? user, LearningState learningState) {
+    final displayName = user?.firstName?.isNotEmpty == true
+        ? user!.firstName
+        : user?.fullName ?? 'Học viên';
+    final subtitle = user?.username != null ? '@${user!.username}' : '';
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -81,41 +96,184 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Xin chào! 👋',
+              'Xin chào 👋',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.8),
                 fontSize: 16,
               ),
             ),
-            const SizedBox(height: 5),
-            const Text(
-              'Sẵn sàng học hôm nay?',
-              style: TextStyle(
+            const SizedBox(height: 4),
+            Text(
+              displayName,
+              style: const TextStyle(
                 color: Colors.white,
-                fontSize: 24,
+                fontSize: 26,
                 fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (subtitle.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ],
+        ),
+        // Avatar + level badge
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: Colors.white,
+              backgroundImage: user?.avatar != null
+                  ? NetworkImage(user!.avatar!)
+                  : null,
+              child: user?.avatar == null
+                  ? Text(
+                      (user?.firstName.isNotEmpty == true
+                              ? user!.firstName[0]
+                              : 'L')
+                          .toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF6C63FF),
+                      ),
+                    )
+                  : null,
+            ),
+            Positioned(
+              bottom: -4,
+              right: -4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4CAF50),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.stars, size: 14, color: Colors.white),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Lv.${learningState.level}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
-        // Avatar
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
+      ],
+    );
+  }
+
+  /// Thanh tiến trình XP
+  Widget _xayDungThanhXp(LearningState learningState) {
+    final current = learningState.xpInCurrentLevel;
+    final needed = learningState.xpNeededForNextLevel;
+    final totalInLevel = current + needed;
+    final isMaxLevel = needed <= 0 && learningState.xpForNextLevel == null;
+    final nextLevelLabel = isMaxLevel ? 'MAX' : 'Lv.${learningState.level + 1}';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Tiến độ Level',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+              Text(
+                isMaxLevel
+                    ? 'Đã đạt cấp tối đa'
+                    : '${current.toString()} / ${totalInLevel.toString()} XP',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
-          child: const Icon(Icons.person, color: Color(0xFF6C63FF), size: 30),
-        ),
-      ],
+          const SizedBox(height: 12),
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: learningState.xpProgress),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeInOut,
+            builder: (context, value, child) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: LinearProgressIndicator(
+                  value: value,
+                  minHeight: 14,
+                  backgroundColor: Colors.white.withOpacity(0.12),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    Color(0xFF00E0FF),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Lv.${learningState.level}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                nextLevelLabel,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -241,21 +399,24 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
     final cacBaiHoc = [
       {
         'ten': 'Bài học 1',
-        'chuDe': 'Phát âm /p/, /t/, /k/',
+        'chuDe': 'Phát âm ',
         'tienDo': 0.8,
         'mau': const Color(0xFF6C63FF),
+        'loai': 'pronunciation',
       },
       {
         'ten': 'Bài học 2',
-        'chuDe': 'Ngữ điệu câu hỏi',
+        'chuDe': 'Trắc nghiệm ngữ pháp',
         'tienDo': 0.5,
         'mau': const Color(0xFF4CAF50),
+        'loai': 'grammar',
       },
       {
         'ten': 'Bài học 3',
         'chuDe': 'Từ vựng hàng ngày',
         'tienDo': 0.3,
         'mau': const Color(0xFFFF9800),
+        'loai': 'coming-soon',
       },
     ];
 
@@ -327,15 +488,33 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
               // Nút bắt đầu
               GestureDetector(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ManHinhBaiHocPhatAm(
-                        tenBaiHoc: baiHoc['ten'] as String,
-                        chuDe: baiHoc['chuDe'] as String,
+                  final loai = baiHoc['loai'];
+                  Widget? manHinh;
+
+                  if (loai == 'grammar') {
+                    manHinh = ManHinhBaiHocNguPhap(
+                      tenBaiHoc: baiHoc['ten'] as String,
+                      chuDe: baiHoc['chuDe'] as String,
+                    );
+                  } else if (loai == 'pronunciation') {
+                    manHinh = ManHinhBaiHocPhatAm(
+                      tenBaiHoc: baiHoc['ten'] as String,
+                      chuDe: baiHoc['chuDe'] as String,
+                    );
+                  }
+
+                  if (manHinh != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => manHinh!),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Bài học ${baiHoc['ten']} đang phát triển'),
                       ),
-                    ),
-                  );
+                    );
+                  }
                 },
                 child: Container(
                   padding: const EdgeInsets.all(10),

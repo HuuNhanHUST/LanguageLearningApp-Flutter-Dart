@@ -9,6 +9,9 @@ class LearningState {
   final int dailyLimit;
   final int xp;
   final int level;
+  final int xpInCurrentLevel;
+  final int xpNeededForNextLevel;
+  final int? xpForNextLevel;
   final int streak;
   final List<String> learnedWordIds;
   final bool isLoading;
@@ -21,6 +24,9 @@ class LearningState {
     this.dailyLimit = 30,
     this.xp = 0,
     this.level = 1,
+    this.xpInCurrentLevel = 0,
+    this.xpNeededForNextLevel = 0,
+    this.xpForNextLevel,
     this.streak = 0,
     this.learnedWordIds = const [],
     this.isLoading = false,
@@ -34,6 +40,9 @@ class LearningState {
     int? dailyLimit,
     int? xp,
     int? level,
+    int? xpInCurrentLevel,
+    int? xpNeededForNextLevel,
+    int? xpForNextLevel,
     int? streak,
     List<String>? learnedWordIds,
     bool? isLoading,
@@ -46,6 +55,9 @@ class LearningState {
       dailyLimit: dailyLimit ?? this.dailyLimit,
       xp: xp ?? this.xp,
       level: level ?? this.level,
+      xpInCurrentLevel: xpInCurrentLevel ?? this.xpInCurrentLevel,
+      xpNeededForNextLevel: xpNeededForNextLevel ?? this.xpNeededForNextLevel,
+      xpForNextLevel: xpForNextLevel ?? this.xpForNextLevel,
       streak: streak ?? this.streak,
       learnedWordIds: learnedWordIds ?? this.learnedWordIds,
       isLoading: isLoading ?? this.isLoading,
@@ -61,6 +73,17 @@ class LearningState {
 
   /// Check xem còn học được không
   bool get canLearnMore => remaining > 0;
+
+  /// Tiến độ XP trong level hiện tại (0..1)
+  double get xpProgress {
+    final total = xpInCurrentLevel + xpNeededForNextLevel;
+    if (total <= 0) {
+      return xpInCurrentLevel > 0 ? 1 : 0;
+    }
+    final progress = xpInCurrentLevel / total;
+    if (progress.isNaN) return 0;
+    return progress.clamp(0.0, 1.0);
+  }
 }
 
 /// Notifier quản lý learning state
@@ -68,8 +91,8 @@ class LearningNotifier extends StateNotifier<LearningState> {
   final LearningService _learningService;
 
   LearningNotifier({LearningService? learningService})
-      : _learningService = learningService ?? LearningService(),
-        super(LearningState());
+    : _learningService = learningService ?? LearningService(),
+      super(LearningState());
 
   /// Load initial progress và learned words
   Future<void> loadProgress() async {
@@ -81,44 +104,45 @@ class LearningNotifier extends StateNotifier<LearningState> {
       final results = await Future.wait([
         _learningService.getProgress(),
         _learningService.getLearnedWords(),
+        _learningService.getGamificationStats(),
       ]);
 
       final progress = results[0] as Map<String, dynamic>;
       final learnedWords = results[1] as List<String>;
-
-      print('✅ LearningProvider: Received data from backend:');
-      print('   - XP: ${progress['xp']}');
-      print('   - Level: ${progress['level']}');
-      print('   - Total: ${progress['totalWordsLearned']}');
-      print('   - Today: ${progress['wordsLearnedToday']}');
-      print('   - Streak: ${progress['streak']}');
-      print('   - Learned words: ${learnedWords.length}');
+      final gamification = results[2] as Map<String, dynamic>;
 
       state = state.copyWith(
         totalWordsLearned: progress['totalWordsLearned'] as int,
         wordsLearnedToday: progress['wordsLearnedToday'] as int,
         remaining: progress['remaining'] as int,
         dailyLimit: progress['dailyLimit'] as int,
-        xp: progress['xp'] as int,
-        level: progress['level'] as int,
+        xp: (gamification['currentXP'] ?? progress['xp']) as int,
+        level: (gamification['level'] ?? progress['level']) as int,
+        xpInCurrentLevel:
+            (gamification['xpInCurrentLevel'] as int?) ??
+            (progress['xp'] as int),
+        xpNeededForNextLevel:
+            (gamification['xpNeededForNextLevel'] as int?) ?? 0,
+        xpForNextLevel: gamification['xpForNextLevel'] as int?,
         streak: progress['streak'] as int,
         learnedWordIds: learnedWords,
         isLoading: false,
       );
-      
+
       print('✅ LearningProvider: State updated successfully!');
     } catch (e) {
-      print('❌ LearningProvider: Error loading progress: $e');
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
   /// Đánh dấu từ đã học và cập nhật XP
   /// Returns: { success: bool, message: String, leveledUp: bool, xpGained: int, newLevel: int }
-  Future<Map<String, dynamic>> markWordLearned(String wordId) async {
+  Future<Map<String, dynamic>> markWordLearned(
+    String wordId, {
+    int score = 100,
+    String difficulty = 'medium',
+    String activityType = 'lesson',
+  }) async {
     if (!state.canLearnMore) {
       return {
         'success': false,
@@ -128,29 +152,47 @@ class LearningNotifier extends StateNotifier<LearningState> {
 
     // Check xem đã học từ này chưa
     if (state.learnedWordIds.contains(wordId)) {
-      return {
-        'success': false,
-        'message': 'Bạn đã học từ này rồi!',
-      };
+      return {'success': false, 'message': 'Bạn đã học từ này rồi!'};
     }
 
     try {
-      final result = await _learningService.markWordLearned(wordId);
+      final result = await _learningService.markWordLearned(
+        wordId,
+        score: score,
+        difficulty: difficulty,
+        activityType: activityType,
+      );
 
-      // Update state với data mới
+      final updatedWordsLearnedToday = state.wordsLearnedToday + 1;
+      final cappedWordsLearnedToday = state.dailyLimit > 0
+          ? (updatedWordsLearnedToday > state.dailyLimit
+                ? state.dailyLimit
+                : updatedWordsLearnedToday)
+          : updatedWordsLearnedToday;
+      final updatedRemaining = state.dailyLimit > 0
+          ? state.dailyLimit - cappedWordsLearnedToday
+          : state.remaining;
+
       state = state.copyWith(
-        totalWordsLearned: result['totalWordsLearned'] as int,
-        wordsLearnedToday: result['wordsLearnedToday'] as int,
-        remaining: result['remaining'] as int,
-        xp: result['totalXp'] as int,
-        level: result['level'] as int,
-        streak: result['streak'] as int,
+        totalWordsLearned: state.totalWordsLearned + 1,
+        wordsLearnedToday: cappedWordsLearnedToday,
+        remaining: updatedRemaining < 0 ? 0 : updatedRemaining,
+        xp: (result['currentXP'] as int?) ?? state.xp,
+        level: (result['level'] as int?) ?? state.level,
+        xpInCurrentLevel:
+            (result['xpInCurrentLevel'] as int?) ?? state.xpInCurrentLevel,
+        xpNeededForNextLevel:
+            (result['xpNeededForNextLevel'] as int?) ??
+            state.xpNeededForNextLevel,
+        xpForNextLevel:
+            result['xpForNextLevel'] as int? ?? state.xpForNextLevel,
+        streak: (result['streak'] as int?) ?? state.streak,
         learnedWordIds: [...state.learnedWordIds, wordId],
       );
 
       // Return result với thông tin level up
-      final xpGained = result['xpGained'] as int;
-      final leveledUp = result['leveledUp'] as bool;
+      final xpGained = result['xpGained'] as int? ?? 0;
+      final leveledUp = result['leveledUp'] as bool? ?? false;
 
       return {
         'success': true,
@@ -163,10 +205,7 @@ class LearningNotifier extends StateNotifier<LearningState> {
       };
     } catch (e) {
       state = state.copyWith(error: e.toString());
-      return {
-        'success': false,
-        'message': 'Lỗi: ${e.toString()}',
-      };
+      return {'success': false, 'message': 'Lỗi: ${e.toString()}'};
     }
   }
 
@@ -187,7 +226,8 @@ class LearningNotifier extends StateNotifier<LearningState> {
 }
 
 /// Provider cho LearningNotifier
-final learningProvider =
-    StateNotifierProvider<LearningNotifier, LearningState>((ref) {
-  return LearningNotifier();
-});
+final learningProvider = StateNotifierProvider<LearningNotifier, LearningState>(
+  (ref) {
+    return LearningNotifier();
+  },
+);
