@@ -14,6 +14,7 @@ class ApiConstants {
   //static const String baseUrl = 'http://10.0.2.2:5000/api'; // Android Emulator
   // static const String baseUrl = 'http://192.168.1.5:5000/api'; // Thiết bị vật lý
   // static const String baseUrl = 'http://localhost:5000/api'; // iOS Simulator
+  
   static const String baseUrl = 'http://192.168.1.85:5000/api';
   // Auth Endpoints
   static const String register = '$baseUrl/users/register';
@@ -34,6 +35,7 @@ class ApiConstants {
   // Word endpoints
   static const String wordLookup = '$baseUrl/words/lookup';
   static const String getWords = '$baseUrl/words';
+  static const String vocabularyStats = '$baseUrl/words/stats';
   static String deleteWord(String wordId) => '$baseUrl/words/$wordId';
   static String updateWord(String wordId) => '$baseUrl/words/$wordId';
   static String toggleMemorized(String wordId) =>
@@ -47,6 +49,10 @@ class ApiConstants {
   static const String pronunciationCompare = '$baseUrl/pronunciation/compare';
   static const String pronunciationScore = '$baseUrl/pronunciation/score';
   static const String pronunciationErrors = '$baseUrl/pronunciation/errors';
+
+  // Gamification / Profile endpoints
+  static const String gamificationStats = '$baseUrl/gamification/stats';
+  static const String gamificationBadges = '$baseUrl/gamification/badges';
 
   // Grammar lesson endpoints
   static const String grammarQuestions = '$baseUrl/grammar/questions';
