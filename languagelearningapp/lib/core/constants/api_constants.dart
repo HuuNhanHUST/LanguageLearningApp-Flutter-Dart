@@ -35,6 +35,7 @@ class ApiConstants {
   // Word endpoints
   static const String wordLookup = '$baseUrl/words/lookup';
   static const String getWords = '$baseUrl/words';
+  static const String searchWords = '$baseUrl/words/search';
   static const String vocabularyStats = '$baseUrl/words/stats';
   static String deleteWord(String wordId) => '$baseUrl/words/$wordId';
   static String updateWord(String wordId) => '$baseUrl/words/$wordId';

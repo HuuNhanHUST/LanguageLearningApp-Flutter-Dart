@@ -83,6 +83,9 @@ class AuthService {
           throw Exception(data['message'] ?? 'Login failed');
         }
         final authResponse = AuthResponse.fromJson(data['data']);
+        
+        // Log received user data for debugging
+        print('📦 Login response - User: ${authResponse.user.username}, XP: ${authResponse.user.xp}, Level: ${authResponse.user.level}');
 
         // Save tokens and user data
         await _saveAuthData(authResponse);
