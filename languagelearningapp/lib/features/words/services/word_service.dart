@@ -47,6 +47,48 @@ class WordService {
     }
   }
 
+  /// Tìm kiếm từ vựng với Full-Text Search
+  Future<Map<String, dynamic>> searchWords({
+    required String query,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final token = await _authService.getAccessToken();
+    if (token == null) {
+      throw Exception('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+    }
+
+    try {
+      final url = '${ApiConstants.searchWords}?q=${Uri.encodeComponent(query)}&page=$page&limit=$limit';
+
+      final response = await _client.get(
+        Uri.parse(url),
+        headers: ApiConstants.getHeaders(token: token),
+      );
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      if (response.statusCode == 200) {
+        final words = (data['data']?['words'] as List?)
+                ?.map((json) => WordModel.fromJson(json as Map<String, dynamic>))
+                .toList() ??
+            [];
+
+        return {
+          'words': words,
+          'total': data['data']?['total'] ?? 0,
+          'page': data['data']?['page'] ?? page,
+          'totalPages': data['data']?['totalPages'] ?? 1,
+          'searchTime': data['data']?['searchTime'] ?? 0,
+        };
+      }
+
+      throw Exception(data['message']?.toString() ?? 'Không thể tìm kiếm từ');
+    } catch (e) {
+      throw Exception('Lỗi khi tìm kiếm từ: $e');
+    }
+  }
+
   /// Lấy danh sách từ vựng với phân trang
   Future<Map<String, dynamic>> getWords({
     int page = 1,

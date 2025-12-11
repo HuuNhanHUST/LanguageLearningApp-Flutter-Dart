@@ -151,10 +151,18 @@ class LearningService {
         print('📦 Backend response for learned-words: $data');
         
         if (data['success'] == true) {
-          final learnedWords =
-              (data['data']['learnedWords'] as List<dynamic>)
-                  .map((id) => id.toString())
-                  .toList();
+          final dataField = data['data'] as Map<String, dynamic>;
+          final learnedWordsRaw = dataField['learnedWordIds'];
+          
+          // Xử lý null an toàn
+          if (learnedWordsRaw == null) {
+            print('⚠️ learnedWordIds is null, returning empty list');
+            return [];
+          }
+          
+          final learnedWords = (learnedWordsRaw as List<dynamic>)
+              .map((id) => id.toString())
+              .toList();
           return learnedWords;
         } else {
           throw Exception(data['message'] ?? 'Failed to get learned words');
