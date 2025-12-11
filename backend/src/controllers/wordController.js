@@ -626,3 +626,100 @@ exports.getDueWords = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc    Search words using Full-Text Search
+ * @route   GET /api/words/search
+ * @access  Private
+ */
+exports.searchWords = async (req, res) => {
+  try {
+    const { q: searchQuery, limit = 20, page = 1 } = req.query;
+
+    if (!searchQuery || searchQuery.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Search query is required',
+      });
+    }
+
+    const limitNum = parseInt(limit);
+    const pageNum = parseInt(page);
+    const skip = (pageNum - 1) * limitNum;
+
+    const startTime = Date.now();
+
+    // Full-Text Search with text score
+    const searchResults = await Word.find(
+      { $text: { $search: searchQuery } },
+      { score: { $meta: 'textScore' } }
+    )
+    .sort({ score: { $meta: 'textScore' } })
+    .skip(skip)
+    .limit(limitNum);
+
+    const searchTime = Date.now() - startTime;
+
+    // Check which words user already has
+    const wordIds = searchResults.map(w => w._id);
+    const userWords = await UserWord.find({
+      userId: req.user._id,
+      wordId: { $in: wordIds }
+    });
+
+    const userWordMap = new Map();
+    userWords.forEach(uw => {
+      userWordMap.set(uw.wordId.toString(), uw);
+    });
+
+    // Format results with user data
+    const formattedResults = searchResults.map(word => {
+      const wordObj = word.toObject();
+      const userWord = userWordMap.get(word._id.toString());
+      
+      if (userWord) {
+        wordObj.isMemorized = userWord.isMemorized;
+        wordObj.addedAt = userWord.addedAt;
+        wordObj.reviewCount = userWord.reviewCount;
+        wordObj.accuracyRate = userWord.accuracyRate;
+        wordObj.isInVocabulary = true;
+      } else {
+        wordObj.isMemorized = false;
+        wordObj.isInVocabulary = false;
+      }
+      
+      return wordObj;
+    });
+
+    // Get total count for pagination
+    const totalCount = await Word.countDocuments(
+      { $text: { $search: searchQuery } }
+    );
+
+    const totalPages = Math.ceil(totalCount / limitNum);
+
+    console.log(`🔍 Full-Text Search: "${searchQuery}" - ${searchResults.length} results in ${searchTime}ms`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Search completed successfully',
+      data: {
+        words: formattedResults,
+        total: totalCount,
+        page: pageNum,
+        totalPages: totalPages,
+        hasMore: pageNum < totalPages,
+        searchTime: searchTime,
+        query: searchQuery,
+      },
+    });
+
+  } catch (error) {
+    console.error('Search words error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while searching words',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+};
