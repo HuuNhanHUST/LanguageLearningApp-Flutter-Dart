@@ -6,6 +6,7 @@ import 'package:provider/provider.dart' as provider;
 import 'man_hinh_bai_hoc_phat_am.dart';
 import 'man_hinh_bai_hoc_ngu_phap.dart';
 import '../../../screens/text_scan_screen.dart';
+import '../../../widgets/cached_avatar.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../learning/providers/learning_provider.dart';
@@ -119,7 +120,7 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
             ),
           ],
         ),
-        // Avatar dẫn đến hồ sơ
+        // Avatar dẫn đến hồ sơ - Tối ưu với CachedAvatar
         GestureDetector(
           onTap: _moTrangHoSo,
           child: Container(
@@ -136,30 +137,12 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
                 ),
               ],
             ),
-            child: user?.avatar != null
-                ? ClipOval(
-                    child: Image.network(
-                      user!.avatar!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.person,
-                        color: Color(0xFF6C63FF),
-                      ),
-                    ),
-                  )
-                : Center(
-                    child: Text(
-                      (user?.firstName.isNotEmpty == true
-                              ? user!.firstName[0]
-                              : 'H')
-                          .toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF6C63FF),
-                      ),
-                    ),
-                  ),
+            child: CachedAvatar(
+              imageUrl: user?.avatar,
+              radius: 27,
+              fallbackText: user?.firstName ?? 'H',
+              backgroundColor: const Color(0xFF6C63FF),
+            ),
           ),
         ),
       ],
@@ -407,7 +390,9 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Bài học ${baiHoc['ten']} đang phát triển'),
+                        content: Text(
+                          'Bài học ${baiHoc['ten']} đang phát triển',
+                        ),
                       ),
                     );
                   }
