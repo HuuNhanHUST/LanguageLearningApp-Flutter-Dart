@@ -70,8 +70,28 @@ const wordSchema = new mongoose.Schema(
   },
 );
 
+// Regular indexes for exact match and filtering
 wordSchema.index({ normalizedWord: 1 });
 wordSchema.index({ owners: 1 });
+wordSchema.index({ topic: 1 });
+
+// Full-Text Search Index for fast search
+// Supports case-insensitive search on word, meaning, example, and topic
+wordSchema.index({ 
+  word: 'text', 
+  meaning: 'text', 
+  example: 'text',
+  topic: 'text'
+}, {
+  name: 'word_fulltext_search',
+  default_language: 'english',
+  weights: {
+    word: 10,        // Highest priority for word field
+    meaning: 5,      // Medium-high priority for meaning
+    topic: 3,        // Medium priority for topic
+    example: 1       // Lowest priority for example
+  }
+});
 
 wordSchema.pre('validate', function normalizeWord(next) {
   if (this.word) {

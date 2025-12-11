@@ -3,6 +3,7 @@ const User = require('../models/User');
 const axios = require('axios');
 const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
+const { calculateLevel, getXPForNextLevel } = require('../services/gamificationService');
 
 /**
  * @desc    Register new user
@@ -144,6 +145,9 @@ exports.login = async (req, res) => {
         const accessToken = user.generateAccessToken();
         const refreshToken = user.generateRefreshToken();
         await user.save();
+        
+        // Log user stats for debugging
+        console.log(`✅ Login successful: ${user.username} (XP: ${user.xp}, Level: ${user.level}, Total Words: ${user.totalWordsLearned})`);
         
         res.status(200).json({
             success: true,
@@ -514,12 +518,39 @@ exports.getUserStats = async (req, res) => {
     try {
         const user = await User.findById(req.user._id);
         
+        // Calculate progress and words learned today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const lastLearningDate = user.lastLearningDate ? new Date(user.lastLearningDate) : null;
+        const isNewDay = !lastLearningDate || lastLearningDate < today;
+        
+        const wordsLearnedToday = isNewDay ? 0 : (user.wordsLearnedToday || 0);
+        const totalWords = user.totalWordsLearned || 0;
+        
+        // Calculate XP for next level
+        const currentLevel = user.level || 1;
+        const nextLevelXp = getXPForNextLevel(currentLevel);
+        const previousLevelXp = currentLevel > 1 ? getXPForNextLevel(currentLevel - 1) : 0;
+        const xpProgress = (user.xp || 0) - previousLevelXp;
+        const xpNeeded = nextLevelXp - previousLevelXp;
+        
+        // TODO: Calculate real accuracy from test results
+        const accuracy = 0;
+        
+        console.log(`📊 User stats: ${user.username} - XP: ${user.xp}, Level: ${currentLevel}, Total Words: ${totalWords}, Today: ${wordsLearnedToday}`);
+        
         res.status(200).json({
             success: true,
             data: {
-                xp: user.xp,
-                level: user.level,
-                streak: user.streak,
+                streak: user.streak || 0,
+                totalWords: totalWords,
+                accuracy: accuracy,
+                xp: user.xp || 0,
+                level: currentLevel,
+                nextLevelXp: nextLevelXp,
+                xpProgress: xpProgress,
+                xpNeeded: xpNeeded,
+                wordsLearnedToday: wordsLearnedToday,
                 learningLanguages: user.learningLanguages,
                 lastActiveDate: user.lastActiveDate,
                 preferences: user.preferences

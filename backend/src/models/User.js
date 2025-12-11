@@ -94,6 +94,34 @@ const userSchema = new mongoose.Schema({
         default: Date.now
     },
     
+    // Learning Progress Fields
+    totalWordsLearned: {
+        type: Number,
+        default: 0
+    },
+    wordsLearnedToday: {
+        type: Number,
+        default: 0
+    },
+    lastLearningDate: {
+        type: Date,
+        default: null
+    },
+    learnedWords: [{
+        wordId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Word'
+        },
+        learnedAt: {
+            type: Date,
+            default: Date.now
+        },
+        timesReviewed: {
+            type: Number,
+            default: 0
+        }
+    }],
+    
     // User Preferences
     preferences: {
         dailyGoal: {
