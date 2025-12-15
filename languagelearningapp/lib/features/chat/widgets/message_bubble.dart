@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/design_system.dart';
 import '../models/message_model.dart';
 
 /// Widget hiển thị bubble tin nhắn
@@ -13,7 +14,10 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
       child: Row(
         mainAxisAlignment:
             message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -22,7 +26,7 @@ class MessageBubble extends StatelessWidget {
           // Avatar cho AI Bot (bên trái)
           if (!message.isUser) ...[
             _buildAvatar(isUser: false),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
           ],
 
           // Message bubble
@@ -31,16 +35,23 @@ class MessageBubble extends StatelessWidget {
               constraints: BoxConstraints(
                 maxWidth: MediaQuery.of(context).size.width * 0.7,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.md,
+              ),
               decoration: BoxDecoration(
                 color: message.isUser
-                    ? const Color(0xFF6366F1) // Màu xanh cho user
-                    : Colors.grey[200], // Màu xám cho bot
+                    ? AppColors.primary
+                    : AppColors.backgroundTertiary,
                 borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(message.isUser ? 16 : 4),
-                  bottomRight: Radius.circular(message.isUser ? 4 : 16),
+                  topLeft: Radius.circular(AppSpacing.radiusLarge),
+                  topRight: Radius.circular(AppSpacing.radiusLarge),
+                  bottomLeft: Radius.circular(
+                    message.isUser ? AppSpacing.radiusLarge : AppSpacing.radiusSmall,
+                  ),
+                  bottomRight: Radius.circular(
+                    message.isUser ? AppSpacing.radiusSmall : AppSpacing.radiusLarge,
+                  ),
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -56,22 +67,21 @@ class MessageBubble extends StatelessWidget {
                   // Nội dung tin nhắn
                   Text(
                     message.text,
-                    style: TextStyle(
-                      color: message.isUser ? Colors.white : Colors.black87,
-                      fontSize: 15,
-                      height: 1.4,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: message.isUser
+                          ? AppColors.textOnDark
+                          : AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   
                   // Timestamp
                   Text(
                     _formatTime(message.timestamp),
-                    style: TextStyle(
+                    style: AppTextStyles.caption.copyWith(
                       color: message.isUser
-                          ? Colors.white.withOpacity(0.7)
-                          : Colors.grey[600],
-                      fontSize: 11,
+                          ? AppColors.textOnDark.withOpacity(0.7)
+                          : AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -81,7 +91,7 @@ class MessageBubble extends StatelessWidget {
 
           // Avatar cho User (bên phải)
           if (message.isUser) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             _buildAvatar(isUser: true),
           ],
         ],
@@ -96,7 +106,7 @@ class MessageBubble extends StatelessWidget {
       height: 32,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isUser ? const Color(0xFF6366F1) : Colors.grey[300],
+        color: isUser ? AppColors.primary : AppColors.backgroundTertiary,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -107,8 +117,8 @@ class MessageBubble extends StatelessWidget {
       ),
       child: Icon(
         isUser ? Icons.person : Icons.smart_toy,
-        size: 20,
-        color: isUser ? Colors.white : Colors.grey[700],
+        size: AppSpacing.iconSmall,
+        color: isUser ? AppColors.textOnDark : AppColors.textSecondary,
       ),
     );
   }

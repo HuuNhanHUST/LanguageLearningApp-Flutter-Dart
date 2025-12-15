@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart' as provider;
+import '../../../core/design_system.dart';
 
 import '../../words/models/word_model.dart';
 import '../../words/providers/word_lookup_provider.dart';
@@ -58,12 +59,10 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Từ điển',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
+                          style: AppTextStyles.headlineLarge.copyWith(
+                            color: AppColors.textOnDark,
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -94,10 +93,10 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
 
   Widget _xayDungThanhTimKiem(WordLookupProvider tuDienProvider) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -113,7 +112,7 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
         decoration: InputDecoration(
           hintText: 'Nhập từ tiếng Anh cần tra...',
           border: InputBorder.none,
-          icon: const Icon(Icons.search, color: Color(0xFF6C63FF)),
+          icon: const Icon(Icons.search, color: AppColors.primary),
           suffixIcon: tuDienProvider.isLoading
               ? const Padding(
                   padding: EdgeInsets.all(12.0),
@@ -124,7 +123,7 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
                   ),
                 )
               : IconButton(
-                  icon: const Icon(Icons.send, color: Color(0xFF6C63FF)),
+                  icon: const Icon(Icons.send, color: AppColors.primary),
                   onPressed: () => _thucHienTraCuu(tuDienProvider),
                 ),
         ),
@@ -163,18 +162,18 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
             _xayDungTheTuVung(tuDienProvider.currentWord!),
             const SizedBox(height: 25),
           ] else ...[
-            const Text(
+            Text(
               'Tra cứu từ mới',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2D1B69),
+              style: AppTextStyles.titleMedium.copyWith(
+                color: AppColors.audioRecording,
               ),
             ),
-            const SizedBox(height: 12),
-            const Text(
+            const SizedBox(height: AppSpacing.md),
+            Text(
               'Nhập từ tiếng Anh và nhấn enter để lấy nghĩa, ví dụ và chủ đề. Kết quả sẽ được lưu vào tài khoản của bạn.',
-              style: TextStyle(fontSize: 14, color: Colors.black54),
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 25),
           ],
@@ -186,10 +185,10 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
 
   Widget _xayDungTheTuVung(WordModel word) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -197,7 +196,7 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: const Color(0xFF6C63FF).withOpacity(0.15)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.15)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,40 +213,37 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
                         Flexible(
                           child: Text(
                             word.word,
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2D1B69),
+                            style: AppTextStyles.headlineMedium.copyWith(
+                              color: AppColors.audioRecording,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         IconButton(
                           icon: const Icon(
                             Icons.volume_up,
-                            color: Color(0xFF6C63FF),
-                            size: 28,
+                            color: AppColors.primary,
+                            size: AppSpacing.iconMedium,
                           ),
                           onPressed: () => _ttsService.speak(word.word),
                           tooltip: 'Phát âm',
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF6C63FF).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
                       ),
                       child: Text(
                         word.type,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF6C63FF),
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: AppColors.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -258,8 +254,8 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
               if (word.topic != null && word.topic!.isNotEmpty)
                 Chip(
                   label: Text(word.topic!),
-                  backgroundColor: const Color(0xFFEFF0FF),
-                  labelStyle: const TextStyle(color: Color(0xFF2D1B69)),
+                  backgroundColor: AppColors.backgroundTertiary,
+                  labelStyle: TextStyle(color: AppColors.audioRecording),
                 ),
             ],
           ),
@@ -273,23 +269,21 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
             ),
           ),
           if (word.example != null && word.example!.isNotEmpty) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: AppSpacing.lg),
             Row(
               children: [
-                const Text(
+                Text(
                   'Ví dụ',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2D1B69),
+                  style: AppTextStyles.labelLarge.copyWith(
+                    color: AppColors.audioRecording,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 IconButton(
                   icon: const Icon(
                     Icons.volume_up,
-                    color: Color(0xFF6C63FF),
-                    size: 20,
+                    color: AppColors.primary,
+                    size: AppSpacing.iconSmall,
                   ),
                   onPressed: () => _ttsService.speak(word.example!),
                   tooltip: 'Phát âm ví dụ',
@@ -326,12 +320,10 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Tra cứu gần đây',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF2D1B69),
+          style: AppTextStyles.titleMedium.copyWith(
+            color: AppColors.audioRecording,
           ),
         ),
         const SizedBox(height: 12),
@@ -342,45 +334,44 @@ class _ManHinhTuDienViewState extends State<_ManHinhTuDienView> {
 
   Widget _xayDungMucLichSu(WordModel word, WordLookupProvider providerState) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(15),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMedium),
+        border: Border.all(color: AppColors.border.withOpacity(0.2)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.history, color: Color(0xFF6C63FF)),
-          const SizedBox(width: 15),
+          const Icon(Icons.history, color: AppColors.primary),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   word.word,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppTextStyles.labelLarge,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   word.meaning,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 14, color: Colors.black54),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.volume_up, color: Color(0xFF6C63FF)),
+            icon: const Icon(Icons.volume_up, color: AppColors.primary),
             onPressed: () => _ttsService.speak(word.word),
             tooltip: 'Phát âm',
           ),
           IconButton(
-            icon: const Icon(Icons.north_east, color: Color(0xFF6C63FF)),
+            icon: const Icon(Icons.north_east, color: AppColors.primary),
             onPressed: () {
               _boTimKiem.text = word.word;
               _thucHienTraCuu(providerState);

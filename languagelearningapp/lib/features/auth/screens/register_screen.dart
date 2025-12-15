@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/design_system.dart';
 import '../providers/auth_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -246,22 +247,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   builder: (context, authProvider, child) {
                     if (authProvider.errorMessage != null) {
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
                         child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.red[50],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.red[300]!),
-                          ),
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          decoration: AppDecorations.containerError(),
                           child: Row(
                             children: [
-                              Icon(Icons.error_outline, color: Colors.red[700]),
-                              const SizedBox(width: 8),
+                              const Icon(Icons.error_outline, color: AppColors.error),
+                              const SizedBox(width: AppSpacing.sm),
                               Expanded(
                                 child: Text(
                                   authProvider.errorMessage!,
-                                  style: TextStyle(color: Colors.red[700]),
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: AppColors.error,
+                                  ),
                                 ),
                               ),
                             ],
@@ -281,33 +280,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return ElevatedButton(
                       onPressed: isLoading ? null : _handleRegister,
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
                         ),
                       ),
                       child: isLoading
                           ? const SizedBox(
-                              height: 20,
-                              width: 20,
+                              height: AppSpacing.iconSmall,
+                              width: AppSpacing.iconSmall,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
+                                  AppColors.textOnDark,
                                 ),
                               ),
                             )
-                          : const Text(
+                          : Text(
                               'Create Account',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: AppTextStyles.labelLarge,
                             ),
                     );
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
 
                 // Login Link
                 Row(

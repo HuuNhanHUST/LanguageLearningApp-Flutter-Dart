@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/design_system.dart';
 import '../../auth/services/auth_service.dart';
 
 class ProfileEditScreen extends StatefulWidget {
@@ -63,12 +64,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chỉnh sửa hồ sơ'),
-        backgroundColor: const Color(0xFF2D1B69),
+        backgroundColor: AppColors.audioRecording,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Form(
                 key: _formKey,
                 child: ListView(
@@ -101,14 +102,14 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                       ),
                       onSaved: (val) => _nativeLanguage = val,
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: AppSpacing.xxl),
                     ElevatedButton(
                       onPressed: _saveProfile,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6C63FF),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
                       ),
-                      child: const Text('Lưu', style: TextStyle(fontSize: 18)),
+                      child: Text('Lưu', style: AppTextStyles.titleMedium),
                     ),
                   ],
                 ),

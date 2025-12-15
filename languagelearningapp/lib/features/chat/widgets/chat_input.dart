@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/design_system.dart';
 
 /// Widget nhập liệu chat với nút gửi
 class ChatInput extends StatefulWidget {
@@ -50,13 +51,13 @@ class _ChatInputState extends State<ChatInput> {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.only(
-        left: 12,
-        right: 12,
-        top: 12,
-        bottom: 12 + MediaQuery.of(context).viewInsets.bottom, // Tránh bị che bàn phím
+        left: AppSpacing.md,
+        right: AppSpacing.md,
+        top: AppSpacing.md,
+        bottom: AppSpacing.md + MediaQuery.of(context).viewInsets.bottom,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -71,11 +72,11 @@ class _ChatInputState extends State<ChatInput> {
             // Text field
             Expanded(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.grey[300]!),
+                  color: AppColors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusCircular),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: TextField(
                   controller: _controller,
@@ -86,33 +87,33 @@ class _ChatInputState extends State<ChatInput> {
                   decoration: const InputDecoration(
                     hintText: 'Nhập tin nhắn...',
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                    contentPadding: EdgeInsets.symmetric(vertical: AppSpacing.md),
                   ),
-                  style: const TextStyle(fontSize: 15),
+                  style: AppTextStyles.bodyMedium,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             
             // Send button
             Material(
               color: _hasText && widget.isEnabled
-                  ? const Color(0xFF6366F1)
-                  : Colors.grey[300],
-              borderRadius: BorderRadius.circular(24),
+                  ? AppColors.primary
+                  : AppColors.backgroundTertiary,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusCircular),
               child: InkWell(
                 onTap: _hasText && widget.isEnabled ? _handleSend : null,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusCircular),
                 child: Container(
-                  width: 48,
-                  height: 48,
+                  width: AppSpacing.buttonHeightLarge,
+                  height: AppSpacing.buttonHeightLarge,
                   alignment: Alignment.center,
                   child: Icon(
                     Icons.send,
                     color: _hasText && widget.isEnabled
-                        ? Colors.white
-                        : Colors.grey[500],
-                    size: 22,
+                        ? AppColors.textOnDark
+                        : AppColors.textTertiary,
+                    size: AppSpacing.iconSmall,
                   ),
                 ),
               ),

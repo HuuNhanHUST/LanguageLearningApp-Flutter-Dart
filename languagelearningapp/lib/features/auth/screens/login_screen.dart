@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/design_system.dart';
 import '../providers/auth_provider.dart';
 import '../services/auth_service.dart';
 import '../services/facebook_auth_service.dart';
@@ -209,25 +210,23 @@ class _LoginScreenState extends State<LoginScreen> {
                     builder: (context, authProvider, child) {
                       if (authProvider.errorMessage != null) {
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
                           child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.red[50],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.red[300]!),
-                            ),
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            decoration: AppDecorations.containerError(),
                             child: Row(
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.error_outline,
-                                  color: Colors.red[700],
+                                  color: AppColors.error,
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: AppSpacing.sm),
                                 Expanded(
                                   child: Text(
                                     authProvider.errorMessage!,
-                                    style: TextStyle(color: Colors.red[700]),
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: AppColors.error,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -247,57 +246,52 @@ class _LoginScreenState extends State<LoginScreen> {
                       return ElevatedButton(
                         onPressed: isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusSmall),
                           ),
                         ),
                         child: isLoading
                             ? const SizedBox(
-                                height: 20,
-                                width: 20,
+                                height: AppSpacing.iconSmall,
+                                width: AppSpacing.iconSmall,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
+                                    AppColors.textOnDark,
                                   ),
                                 ),
                               )
-                            : const Text(
+                            : Text(
                                 'Sign In',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: AppTextStyles.labelLarge,
                               ),
                       );
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
 
                   // Facebook Login Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: _isFacebookLoading ? null : _handleFacebookLogin,
-                      icon: const Icon(Icons.facebook, size: 20),
+                      icon: const Icon(Icons.facebook, size: AppSpacing.iconSmall),
                       label: _isFacebookLoading
                           ? const SizedBox(
-                              height: 20,
-                              width: 20,
+                              height: AppSpacing.iconSmall,
+                              width: AppSpacing.iconSmall,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Text('Sign in with Facebook'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(
-                          0xFF1877F2,
-                        ), // Facebook blue
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: AppColors.info,
+                        foregroundColor: AppColors.textOnDark,
+                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
 
                   // Google Login Button
                   SizedBox(
@@ -348,22 +342,22 @@ class _LoginScreenState extends State<LoginScreen> {
                                 );
                               }
                             },
-                      icon: const Icon(Icons.g_mobiledata, size: 20),
+                      icon: const Icon(Icons.g_mobiledata, size: AppSpacing.iconSmall),
                       label: _isGoogleLoading
                           ? const SizedBox(
-                              height: 20,
-                              width: 20,
+                              height: AppSpacing.iconSmall,
+                              width: AppSpacing.iconSmall,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Text('Sign in with Google'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: AppColors.background,
+                        foregroundColor: AppColors.textPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
 
                   // Register Link
                   Row(

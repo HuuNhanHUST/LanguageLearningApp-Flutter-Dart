@@ -106,7 +106,14 @@ class _TextScanScreenState extends State<TextScanScreen> {
         }
       }
     } catch (e) {
+      if (!mounted) return;
       _showError('Lỗi khi chọn ảnh: $e');
+    } finally {
+      if (mounted && _isProcessing) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
     }
   }
 
@@ -114,28 +121,60 @@ class _TextScanScreenState extends State<TextScanScreen> {
     if (_scannedImages.isEmpty) return;
 
     try {
-      String combinedText = '';
+      final combinedTextBuffer = StringBuffer();
 
       for (int i = 0; i < _scannedImages.length; i++) {
         final inputImage = InputImage.fromFile(_scannedImages[i]);
         final RecognizedText recognizedText = await _textRecognizer
             .processImage(inputImage);
 
-        String text = '';
-        for (TextBlock block in recognizedText.blocks) {
-          for (TextLine line in block.lines) {
-            text += '${line.text}\n';
+        final pageTextBuffer = StringBuffer();
+        
+        for (final block in recognizedText.blocks) {
+          // Ghép các dòng trong block thành đoạn văn
+          final paragraphBuffer = StringBuffer();
+          
+          for (final line in block.lines) {
+            final lineText = line.text.trim();
+            if (lineText.isEmpty) continue;
+            
+            // Kiểm tra nếu dòng kết thúc bằng dấu gạch nối (hyphen)
+            if (lineText.endsWith('-')) {
+              // Ghép liền với dòng tiếp theo (bỏ dấu gạch nối)
+              paragraphBuffer.write(lineText.substring(0, lineText.length - 1));
+            } else if (lineText.endsWith('.') || lineText.endsWith('!') || 
+                       lineText.endsWith('?') || lineText.endsWith(':') ||
+                       lineText.endsWith(';')) {
+              // Kết thúc câu, thêm khoảng trắng
+              paragraphBuffer.write('$lineText ');
+            } else {
+              // Dòng bình thường, thêm khoảng trắng
+              paragraphBuffer.write('$lineText ');
+            }
+          }
+          
+          // Thêm đoạn văn và xuống dòng sau mỗi block
+          final paragraph = paragraphBuffer.toString().trim();
+          if (paragraph.isNotEmpty) {
+            pageTextBuffer.writeln(paragraph);
+            pageTextBuffer.writeln();
           }
         }
 
-        combinedText += text;
+        combinedTextBuffer.write(pageTextBuffer.toString());
+        
+        // Thêm phân cách trang nếu có nhiều ảnh
         if (i < _scannedImages.length - 1) {
-          combinedText += '\n--- Trang ${i + 2} ---\n';
+          combinedTextBuffer.writeln();
+          combinedTextBuffer.writeln('━━━━━ Trang ${i + 2} ━━━━━');
+          combinedTextBuffer.writeln();
         }
       }
 
+      if (!mounted) return;
+      
       setState(() {
-        _recognizedText = combinedText.trim();
+        _recognizedText = combinedTextBuffer.toString().trim();
         _isProcessing = false;
       });
 
@@ -145,6 +184,8 @@ class _TextScanScreenState extends State<TextScanScreen> {
         _translateText(autoTrigger: true);
       }
     } catch (e) {
+      if (!mounted) return;
+      
       setState(() {
         _isProcessing = false;
       });
@@ -638,17 +679,29 @@ class _TextScanScreenState extends State<TextScanScreen> {
                           ],
                         ),
                         const Divider(),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         Container(
-                          constraints: const BoxConstraints(maxHeight: 200),
+                          constraints: const BoxConstraints(maxHeight: 400),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.grey[300]!,
+                              width: 1,
+                            ),
+                          ),
                           child: SingleChildScrollView(
                             child: SelectableText(
                               _recognizedText,
                               style: const TextStyle(
-                                fontSize: 16,
-                                height: 1.5,
-                                color: Colors.black87,
+                                fontSize: 15,
+                                height: 2.0,
+                                letterSpacing: 0.2,
+                                wordSpacing: 1.0,
+                                fontFamily: 'serif',
                               ),
+                              textAlign: TextAlign.left,
                             ),
                           ),
                         ),
@@ -765,17 +818,30 @@ class _TextScanScreenState extends State<TextScanScreen> {
                           ],
                         ),
                         const Divider(),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         Container(
-                          constraints: const BoxConstraints(maxHeight: 200),
+                          constraints: const BoxConstraints(maxHeight: 300),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[50]?.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.orange[200]!,
+                              width: 1,
+                            ),
+                          ),
                           child: SingleChildScrollView(
                             child: SelectableText(
                               _translatedText,
                               style: const TextStyle(
-                                fontSize: 16,
-                                height: 1.5,
+                                fontSize: 15,
+                                height: 2.0,
                                 color: Colors.black87,
+                                letterSpacing: 0.5,
+                                wordSpacing: 2.0,
+                                fontFamily: 'serif',
                               ),
+                              textAlign: TextAlign.justify,
                             ),
                           ),
                         ),

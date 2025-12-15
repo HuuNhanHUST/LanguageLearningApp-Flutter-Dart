@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import '../../../core/design_system.dart';
 
 /// Dialog hiển thị khi user level up với animation
 class LevelUpDialog extends StatefulWidget {
@@ -73,15 +74,11 @@ class _LevelUpDialogState extends State<LevelUpDialog>
             child: Container(
               padding: const EdgeInsets.all(30),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF6C63FF), Color(0xFF8B7FFF)],
-                ),
-                borderRadius: BorderRadius.circular(20),
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLarge),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF6C63FF).withOpacity(0.5),
+                    color: AppColors.primary.withOpacity(0.5),
                     blurRadius: 30,
                     spreadRadius: 5,
                   ),
@@ -96,13 +93,13 @@ class _LevelUpDialogState extends State<LevelUpDialog>
                     child: Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: AppColors.textOnDark.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.stars,
-                        size: 60,
-                        color: Colors.white,
+                        size: AppSpacing.iconLarge,
+                        color: AppColors.textOnDark,
                       ),
                     ),
                   ),
@@ -114,49 +111,43 @@ class _LevelUpDialogState extends State<LevelUpDialog>
                     opacity: _fadeAnimation,
                     child: Column(
                       children: [
-                        const Text(
+                        Text(
                           '🎉 LEVEL UP! 🎉',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
+                          style: AppTextStyles.headlineLarge.copyWith(
+                            color: AppColors.textOnDark,
                             letterSpacing: 2,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AppSpacing.sm),
                         Text(
                           'Bạn đã lên Level ${widget.newLevel}!',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w500,
+                          style: AppTextStyles.titleLarge.copyWith(
+                            color: AppColors.textOnDark,
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: AppSpacing.lg),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 10,
+                            horizontal: AppSpacing.lg,
+                            vertical: AppSpacing.sm,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(20),
+                            color: AppColors.textOnDark.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusCircular),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(
                                 Icons.workspace_premium,
-                                color: Colors.amber,
-                                size: 20,
+                                color: AppColors.warningLight,
+                                size: AppSpacing.iconSmall,
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: AppSpacing.sm),
                               Text(
                                 '+${widget.xpGained} XP',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                                style: AppTextStyles.titleMedium.copyWith(
+                                  color: AppColors.textOnDark,
                                 ),
                               ),
                             ],
@@ -166,7 +157,7 @@ class _LevelUpDialogState extends State<LevelUpDialog>
                     ),
                   ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: AppSpacing.xxl),
 
                   // Close button
                   FadeTransition(
@@ -174,22 +165,19 @@ class _LevelUpDialogState extends State<LevelUpDialog>
                     child: ElevatedButton(
                       onPressed: () => Navigator.of(context).pop(),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF6C63FF),
+                        backgroundColor: AppColors.textOnDark,
+                        foregroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 40,
-                          vertical: 15,
+                          horizontal: AppSpacing.xxl,
+                          vertical: AppSpacing.md,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusCircular),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Tuyệt vời!',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: AppTextStyles.labelLarge,
                       ),
                     ),
                   ),
