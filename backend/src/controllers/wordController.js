@@ -261,80 +261,105 @@ exports.createWord = async (req, res) => {
  */
 exports.getWords = async (req, res) => {
   try {
-    const { 
-      topic, 
-      type, 
-      filter = 'all',  // 'all', 'memorized', 'not-memorized'
-      page = 1, 
-      limit = 20 
+    const {
+      keyword,
+      topicId,
+      topic,
+      level,
+      type,
+      filter = 'all',
+      page = 1,
+      limit = 20,
     } = req.query;
 
-    // Parse pagination params
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
     const skip = (pageNum - 1) * limitNum;
 
-    // Build filter for UserWord
     const userWordFilter = { userId: req.user._id };
-    
-    // Apply memorization filter
+
     if (filter === 'memorized') {
       userWordFilter.isMemorized = true;
     } else if (filter === 'not-memorized') {
       userWordFilter.isMemorized = false;
     }
-    // 'all' doesn't add any filter
 
-    // Get total count
+    const wordFilter = {};
+    const resolvedTopic = topicId || topic;
+
+    if (keyword && keyword.trim()) {
+      wordFilter.$text = { $search: keyword.trim() };
+    }
+
+    if (resolvedTopic) {
+      wordFilter.topic = resolvedTopic;
+    }
+
+    if (type) {
+      wordFilter.type = type;
+    }
+
+    if (level) {
+      const normalizedLevel = level.toString().trim().toLowerCase();
+      const numericLevel = Number(level);
+      if (!Number.isNaN(numericLevel) && Number.isFinite(numericLevel)) {
+        wordFilter.difficultyLevel = numericLevel;
+      } else {
+        wordFilter.difficulty = normalizedLevel;
+      }
+    }
+
+    if (Object.keys(wordFilter).length > 0) {
+      const matchingWords = await Word.find(wordFilter).select('_id').lean();
+      const wordIds = matchingWords.map((w) => w._id);
+
+      if (wordIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          data: [],
+          totalPages: 0,
+          currentPage: 1,
+          totalItems: 0,
+        });
+      }
+
+      userWordFilter.wordId = { $in: wordIds };
+    }
+
     const total = await UserWord.countDocuments(userWordFilter);
 
-    // Get user's words with pagination
     const userWords = await UserWord.find(userWordFilter)
       .populate('wordId')
       .sort({ addedAt: -1 })
       .skip(skip)
       .limit(limitNum);
 
-    // Filter by word properties if needed
-    let filteredWords = userWords;
-    if (topic || type) {
-      filteredWords = userWords.filter((uw) => {
-        if (!uw.wordId) return false;
-        if (topic && uw.wordId.topic !== topic) return false;
-        if (type && uw.wordId.type !== type) return false;
-        return true;
-      });
-    }
+    const formattedWords = userWords
+      .map((uw) => {
+        if (!uw.wordId) return null;
 
-    // Format response
-    const formattedWords = filteredWords.map((uw) => {
-      if (!uw.wordId) return null;
-      
-      const wordObj = uw.wordId.toObject();
-      wordObj.isMemorized = uw.isMemorized;
-      wordObj.addedAt = uw.addedAt;
-      wordObj.reviewCount = uw.reviewCount;
-      wordObj.accuracyRate = uw.accuracyRate;
-      wordObj.nextReviewDate = uw.nextReviewDate;
-      wordObj.personalNote = uw.personalNote;
-      wordObj.personalExample = uw.personalExample;
-      
-      return wordObj;
-    }).filter(Boolean);
+        const wordObj = uw.wordId.toObject();
+        wordObj.isMemorized = uw.isMemorized;
+        wordObj.addedAt = uw.addedAt;
+        wordObj.reviewCount = uw.reviewCount;
+        wordObj.accuracyRate = uw.accuracyRate;
+        wordObj.nextReviewDate = uw.nextReviewDate;
+        wordObj.personalNote = uw.personalNote;
+        wordObj.personalExample = uw.personalExample;
 
-    // Calculate pagination info
-    const totalPages = Math.ceil(total / limitNum);
+        return wordObj;
+      })
+      .filter(Boolean);
+
+    const totalPages = total === 0 ? 0 : Math.ceil(total / limitNum);
 
     res.status(200).json({
       success: true,
-      message: 'Words retrieved successfully',
-      data: {
-        words: formattedWords,
-        total: total,
-        page: pageNum,
-        totalPages: totalPages,
-        hasMore: pageNum < totalPages,
-      },
+      data: formattedWords,
+      totalPages,
+      currentPage: pageNum,
+      totalItems: total,
+      hasMore: pageNum < totalPages,
     });
   } catch (error) {
     console.error('Get words error:', error);
@@ -632,9 +657,15 @@ exports.getDueWords = async (req, res) => {
  * @route   GET /api/words/search
  * @access  Private
  */
+/**
+ * @desc    Search words using Full-Text Search
+ * @route   GET /api/words/search
+ * @access  Private
+ */
 exports.searchWords = async (req, res) => {
   try {
-    const { q: searchQuery, limit = 20, page = 1 } = req.query;
+    // 1. Lấy tất cả tham số, bao gồm topicId và level
+    const { q: searchQuery, limit = 20, page = 1, topicId, level } = req.query;
 
     if (!searchQuery || searchQuery.trim() === '') {
       return res.status(400).json({
@@ -649,9 +680,30 @@ exports.searchWords = async (req, res) => {
 
     const startTime = Date.now();
 
-    // Full-Text Search with text score
+    // 2. Xây dựng Object Query (bao gồm $text, topic, và level)
+    const query = {
+      $text: { $search: searchQuery },
+    };
+
+    // Bổ sung Lọc theo Topic
+    if (topicId && topicId.trim()) {
+      query.topic = topicId.trim();
+    }
+
+    // Bổ sung Lọc theo Level
+    if (level) {
+      const normalizedLevel = level.toString().trim().toLowerCase();
+      const numericLevel = Number(level);
+      if (!Number.isNaN(numericLevel) && Number.isFinite(numericLevel)) {
+        query.difficultyLevel = numericLevel;
+      } else {
+        query.difficulty = normalizedLevel;
+      }
+    }
+
+    // 3. Thực hiện truy vấn (dùng object query mới)
     const searchResults = await Word.find(
-      { $text: { $search: searchQuery } },
+      query, // Sử dụng object query đã bổ sung điều kiện lọc
       { score: { $meta: 'textScore' } }
     )
     .sort({ score: { $meta: 'textScore' } })
@@ -691,10 +743,8 @@ exports.searchWords = async (req, res) => {
       return wordObj;
     });
 
-    // Get total count for pagination
-    const totalCount = await Word.countDocuments(
-      { $text: { $search: searchQuery } }
-    );
+    // Get total count for pagination (dùng object query mới)
+    const totalCount = await Word.countDocuments(query);
 
     const totalPages = Math.ceil(totalCount / limitNum);
 
@@ -723,7 +773,6 @@ exports.searchWords = async (req, res) => {
     });
   }
 };
-
 /**
  * @desc    Get daily lesson words (30 unique words per day, not learned before)
  * @route   GET /api/words/daily-lesson
