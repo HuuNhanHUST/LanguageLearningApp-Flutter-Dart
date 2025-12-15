@@ -521,9 +521,17 @@ exports.getUserStats = async (req, res) => {
         // Calculate progress and words learned today
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const lastLearningDate = user.lastLearningDate ? new Date(user.lastLearningDate) : null;
-        const isNewDay = !lastLearningDate || lastLearningDate < today;
         
+        const lastLearningDate = user.lastLearningDate ? new Date(user.lastLearningDate) : null;
+        let lastLearningDateNormalized = null;
+        if (lastLearningDate) {
+          lastLearningDateNormalized = new Date(lastLearningDate);
+          lastLearningDateNormalized.setHours(0, 0, 0, 0);
+        }
+        
+        const isNewDay = !lastLearningDateNormalized || lastLearningDateNormalized.getTime() < today.getTime();
+        
+        // Nếu là ngày mới thì wordsLearnedToday = 0, còn không thì lấy từ database
         const wordsLearnedToday = isNewDay ? 0 : (user.wordsLearnedToday || 0);
         const totalWords = user.totalWordsLearned || 0;
         
@@ -537,7 +545,7 @@ exports.getUserStats = async (req, res) => {
         // TODO: Calculate real accuracy from test results
         const accuracy = 0;
         
-        console.log(`📊 User stats: ${user.username} - XP: ${user.xp}, Level: ${currentLevel}, Total Words: ${totalWords}, Today: ${wordsLearnedToday}`);
+        console.log(`📊 User stats: ${user.username} - XP: ${user.xp}, Level: ${currentLevel}, Total Words: ${totalWords}, Today: ${wordsLearnedToday}, Streak: ${user.streak || 0}`);
         
         res.status(200).json({
             success: true,

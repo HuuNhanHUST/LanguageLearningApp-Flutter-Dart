@@ -33,6 +33,18 @@ const wordSchema = new mongoose.Schema(
       trim: true,
       default: 'General',
     },
+    difficulty: {
+      type: String,
+      enum: ['beginner', 'intermediate', 'advanced'],
+      default: 'beginner',
+      trim: true,
+    },
+    difficultyLevel: {
+      type: Number,
+      min: 1,
+      max: 10,
+      default: 1,
+    },
     owners: {
       type: [
         {

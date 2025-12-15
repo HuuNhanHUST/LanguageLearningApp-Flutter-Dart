@@ -9,6 +9,11 @@ import '../../learning/providers/learning_provider.dart';
 import '../models/badge_model.dart';
 import '../services/profile_service.dart';
 import '../widgets/badge_card.dart';
+import 'edit_profile_screen.dart';
+import 'notifications_screen.dart';
+import 'language_settings_screen.dart';
+import 'security_screen.dart';
+import 'help_screen.dart';
 
 class ManHinhHoSoNguoiDung extends ConsumerStatefulWidget {
   const ManHinhHoSoNguoiDung({super.key});
@@ -96,6 +101,8 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
                     _xayDungHeader(user, learningState, _stats),
                     const SizedBox(height: 20),
                     _buildStatsGrid(learningState, _stats, _vocabStats, user),
+                    const SizedBox(height: 28),
+                    _buildSettingsSection(),
                     const SizedBox(height: 28),
                     _buildBadgesSection(),
                     if (_error != null) ...[
@@ -233,9 +240,10 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
               ),
               IconButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Chức năng chỉnh sửa đang phát triển.'),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EditProfileScreen(),
                     ),
                   );
                 },
@@ -415,6 +423,123 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
     );
   }
 
+  Widget _buildSettingsSection() {
+    final settingsItems = [
+      _SettingsItem(
+        icon: Icons.notifications_outlined,
+        title: 'Thông báo',
+        subtitle: 'Quản lý thông báo học tập',
+        color: const Color(0xFF6C63FF),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const NotificationsScreen(),
+            ),
+          );
+        },
+      ),
+      _SettingsItem(
+        icon: Icons.translate,
+        title: 'Ngôn ngữ',
+        subtitle: 'Chọn ngôn ngữ học và giao diện',
+        color: Colors.blue,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const LanguageSettingsScreen(),
+            ),
+          );
+        },
+      ),
+      _SettingsItem(
+        icon: Icons.security,
+        title: 'Bảo mật',
+        subtitle: 'Mật khẩu và quyền riêng tư',
+        color: Colors.orange,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const SecurityScreen(),
+            ),
+          );
+        },
+      ),
+      _SettingsItem(
+        icon: Icons.help_outline,
+        title: 'Trợ giúp',
+        subtitle: 'FAQ và hỗ trợ',
+        color: Colors.green,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const HelpScreen(),
+            ),
+          );
+        },
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Cài đặt',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...settingsItems.map((item) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
+            ),
+            child: ListTile(
+              onTap: item.onTap,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: item.color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(item.icon, color: item.color, size: 24),
+              ),
+              title: Text(
+                item.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+              subtitle: Text(
+                item.subtitle,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.5),
+                  fontSize: 13,
+                ),
+              ),
+              trailing: Icon(
+                Icons.chevron_right,
+                color: Colors.white.withOpacity(0.3),
+              ),
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
   Widget _buildBadgesSection() {
     if (_badges.isEmpty) {
       return Container(
@@ -485,5 +610,21 @@ class _StatItem {
     required this.label,
     required this.value,
     required this.color,
+  });
+}
+
+class _SettingsItem {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _SettingsItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
   });
 }

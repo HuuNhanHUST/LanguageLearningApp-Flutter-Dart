@@ -51,6 +51,7 @@ router.use(auth);
 router.post('/lookup', lookupValidation, wordController.lookupWord);
 router.post('/create', createWordValidation, wordController.createWord);
 router.get('/search', wordController.searchWords); // NEW: Full-Text Search
+router.get('/daily-lesson', wordController.getDailyLessonWords); // NEW: Daily lesson words (deterministic)
 router.get('/stats', wordController.getUserStats); // NEW: User stats
 router.get('/due', wordController.getDueWords); // NEW: Words due for review
 router.get('/', wordController.getWords);

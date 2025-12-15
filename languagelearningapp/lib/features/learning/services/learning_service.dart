@@ -12,9 +12,9 @@ class LearningService {
     : _client = client ?? http.Client(),
       _authService = authService ?? AuthService();
 
-  /// Gửi kết quả hoàn thành bài học để nhận XP
-  /// POST /api/gamification/progress
-  /// Body: { score, difficulty, activityType, wordId? }
+  /// Đánh dấu từ là đã học và nhận XP
+  /// POST /api/learning/word-learned
+  /// Body: { wordId }
   Future<Map<String, dynamic>> markWordLearned(
     String wordId, {
     int score = 100,
@@ -29,12 +29,9 @@ class LearningService {
     try {
       final response = await _client
           .post(
-            Uri.parse('${ApiConstants.baseUrl}/gamification/progress'),
+            Uri.parse('${ApiConstants.baseUrl}/learning/word-learned'),
             headers: ApiConstants.getHeaders(token: token),
             body: jsonEncode({
-              'score': score,
-              'difficulty': difficulty,
-              'activityType': activityType,
               'wordId': wordId,
             }),
           )
@@ -48,13 +45,38 @@ class LearningService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         if (data['success'] == true) {
-          return data['data'] as Map<String, dynamic>;
+          return {
+            'success': true,
+            'message': data['message'] ?? 'Word learned!',
+            'leveledUp': data['data']?['leveledUp'] ?? false,
+            'xpGained': data['data']?['xpGained'] ?? 0,
+            'totalXp': data['data']?['totalXp'] ?? 0,
+            'level': data['data']?['level'] ?? 1,
+            'oldLevel': data['data']?['oldLevel'] ?? 1,
+            'newLevel': data['data']?['newLevel'] ?? 1,
+            'wordsLearnedToday': data['data']?['wordsLearnedToday'] ?? 0,
+            'totalWordsLearned': data['data']?['totalWordsLearned'] ?? 0,
+            'remaining': data['data']?['remaining'] ?? 0,
+            'streak': data['data']?['streak'] ?? 0,
+          };
         } else {
-          throw Exception(data['message'] ?? 'Failed to submit progress');
+          throw Exception(data['message'] ?? 'Failed to mark word as learned');
         }
+      } else if (response.statusCode == 400) {
+        final error = jsonDecode(response.body);
+        // Từ đã học rồi - trả về thành công nhưng không có XP
+        if (error['message']?.toString().contains('already learned') == true) {
+          return {
+            'success': true,
+            'message': 'Bạn đã học từ này rồi!',
+            'leveledUp': false,
+            'xpGained': 0,
+          };
+        }
+        throw Exception(error['message'] ?? 'Invalid request');
       } else if (response.statusCode == 429) {
         final error = jsonDecode(response.body);
-        throw Exception(error['message'] ?? 'XP rate limit reached');
+        throw Exception(error['message'] ?? 'Đã đạt giới hạn 30 từ/ngày');
       } else if (response.statusCode == 401) {
         throw Exception('Phiên đăng nhập đã hết hạn');
       } else {

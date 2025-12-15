@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/audio_recorder_provider.dart';
+import '../core/utils/haptic_utils.dart';
 import 'audio_visualizer.dart';
 
 /// Enhanced Audio Recorder Button với Visualizer
@@ -26,6 +27,9 @@ class AudioRecorderButton extends ConsumerWidget {
     // Show error snack bar if any
     if (recorderState.errorMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Haptic feedback cho lỗi
+        HapticUtils.error();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(recorderState.errorMessage!),
@@ -38,6 +42,9 @@ class AudioRecorderButton extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () async {
+        // Haptic feedback khi bấm nút ghi âm
+        await HapticUtils.mediumImpact();
+        
         if (!recorderState.isRecording) {
           await recorderNotifier.startRecording();
         } else {

@@ -723,3 +723,169 @@ exports.searchWords = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc    Get daily lesson words (30 unique words per day, not learned before)
+ * @route   GET /api/words/daily-lesson
+ * @access  Private
+ */
+exports.getDailyLessonWords = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const User = require('../models/User');
+    
+    // Get user to check learned words, level, and daily progress
+    const user = await User.findById(userId).select('learnedWords lastLearningDate level wordsLearnedToday');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Check daily limit (30 words/day)
+    const DAILY_LIMIT = 30;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const lastLearningDate = user.lastLearningDate ? new Date(user.lastLearningDate) : null;
+    let lastLearningDateNormalized = null;
+    if (lastLearningDate) {
+      lastLearningDateNormalized = new Date(lastLearningDate);
+      lastLearningDateNormalized.setHours(0, 0, 0, 0);
+    }
+    
+    const isNewDay = !lastLearningDateNormalized || lastLearningDateNormalized.getTime() < today.getTime();
+    const wordsLearnedToday = isNewDay ? 0 : (user.wordsLearnedToday || 0);
+    
+    // If already reached daily limit, return empty
+    if (wordsLearnedToday >= DAILY_LIMIT) {
+      console.log(`🛑 Daily limit reached: ${wordsLearnedToday}/${DAILY_LIMIT} for user ${user.username || userId}`);
+      return res.status(200).json({
+        success: true,
+        message: '🎉 Bạn đã hoàn thành 30 từ hôm nay! Quay lại vào ngày mai nhé!',
+        data: {
+          words: [],
+          total: 0,
+          remaining: 0,
+          dailyLimitReached: true,
+          wordsLearnedToday: wordsLearnedToday,
+          dailyLimit: DAILY_LIMIT,
+        },
+      });
+    }
+    
+    // Calculate how many words can still be learned today
+    const remainingForToday = DAILY_LIMIT - wordsLearnedToday;
+
+    // Get list of learned word IDs
+    const learnedWordIds = user.learnedWords ? user.learnedWords.map(item => item.wordId) : [];
+    
+    // Calculate difficulty based on user level
+    // Level 1-2: beginner (difficultyLevel 1-3)
+    // Level 3-5: beginner + intermediate (difficultyLevel 1-6)
+    // Level 6-8: intermediate + advanced (difficultyLevel 4-9)
+    // Level 9+: all levels (difficultyLevel 1-10)
+    const userLevel = user.level || 1;
+    let difficultyQuery = {};
+    
+    if (userLevel <= 2) {
+      // Beginner: easy words
+      difficultyQuery = { $or: [
+        { difficulty: 'beginner' },
+        { difficultyLevel: { $lte: 3 } }
+      ]};
+    } else if (userLevel <= 5) {
+      // Intermediate: beginner + intermediate
+      difficultyQuery = { $or: [
+        { difficulty: { $in: ['beginner', 'intermediate'] } },
+        { difficultyLevel: { $lte: 6 } }
+      ]};
+    } else if (userLevel <= 8) {
+      // Advanced: intermediate + advanced
+      difficultyQuery = { $or: [
+        { difficulty: { $in: ['intermediate', 'advanced'] } },
+        { difficultyLevel: { $gte: 4, $lte: 9 } }
+      ]};
+    }
+    // Level 9+ can learn all words (no filter)
+    
+    // Use today's date already defined above for deterministic random
+    const dayNumber = Math.floor(today.getTime() / (1000 * 60 * 60 * 24)); // Days since epoch
+    
+    // Build query: not learned + difficulty filter
+    const query = {
+      _id: { $nin: learnedWordIds },
+      ...difficultyQuery
+    };
+    
+    // Get all words not learned yet with appropriate difficulty
+    const unlearnedWords = await Word.find(query)
+      .select('_id word meaning type example topic pronunciation difficulty difficultyLevel');
+    
+    if (unlearnedWords.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'You have learned all available words at your level!',
+        data: {
+          words: [],
+          total: 0,
+          allLearned: true,
+          userLevel: userLevel,
+        },
+      });
+    }
+    
+    // Deterministic shuffle based on day number - ONCE per day
+    // Generate seed from day number
+    const seededRandom = (seed) => {
+      const x = Math.sin(seed) * 10000;
+      return x - Math.floor(x);
+    };
+    
+    // Shuffle all unlearned words
+    const shuffledWords = [...unlearnedWords];
+    for (let i = shuffledWords.length - 1; i > 0; i--) {
+      const j = Math.floor(seededRandom(dayNumber + i) * (i + 1));
+      [shuffledWords[i], shuffledWords[j]] = [shuffledWords[j], shuffledWords[i]];
+    }
+    
+    // IMPORTANT: Only return words that are in the FIRST 30 of today's shuffle
+    // This ensures users can't see "new" words by refreshing
+    const todayPool = shuffledWords.slice(0, 30);
+    
+    // Filter out words already learned today
+    const todayPoolFiltered = todayPool.filter(word => 
+      !learnedWordIds.includes(word._id.toString())
+    );
+    
+    // Take only remaining words for today
+    const wordsToReturn = Math.min(todayPoolFiltered.length, remainingForToday);
+    const dailyWords = todayPoolFiltered.slice(0, wordsToReturn);
+    
+    console.log(`📚 Daily Lesson: ${dailyWords.length}/${remainingForToday} words remaining (Level ${userLevel}) for user ${user.username || userId} (Day #${dayNumber}, Pool: ${todayPool.length}, Filtered: ${todayPoolFiltered.length})`);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Daily lesson words retrieved successfully',
+      data: {
+        words: dailyWords,
+        total: dailyWords.length,
+        remaining: unlearnedWords.length,
+        wordsLearnedToday: wordsLearnedToday,
+        dailyLimit: DAILY_LIMIT,
+        remainingForToday: remainingForToday,
+        dayNumber: dayNumber,
+        userLevel: userLevel,
+      },
+    });
+
+  } catch (error) {
+    console.error('Get daily lesson words error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while getting daily lesson words',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  }
+};

@@ -8,6 +8,11 @@ import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../learning/providers/learning_provider.dart';
 import '../../user/user.dart'; // Import user stats widget
+import '../../profile/screens/edit_profile_screen.dart';
+import '../../profile/screens/notifications_screen.dart';
+import '../../profile/screens/language_settings_screen.dart';
+import '../../profile/screens/security_screen.dart';
+import '../../profile/screens/help_screen.dart';
 
 /// Màn hình Hồ sơ người dùng
 /// Hiển thị thông tin cá nhân, cài đặt
@@ -317,7 +322,40 @@ class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
                   if (tuyChon['ten'] == 'Đăng xuất') {
                     _xuLyDangXuat(context);
                   } else if (tuyChon['ten'] == 'Chỉnh sửa hồ sơ') {
-                    Navigator.pushNamed(context, '/profile/edit');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EditProfileScreen(),
+                      ),
+                    );
+                  } else if (tuyChon['ten'] == 'Thông báo') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const NotificationsScreen(),
+                      ),
+                    );
+                  } else if (tuyChon['ten'] == 'Ngôn ngữ học') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LanguageSettingsScreen(),
+                      ),
+                    );
+                  } else if (tuyChon['ten'] == 'Bảo mật') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SecurityScreen(),
+                      ),
+                    );
+                  } else if (tuyChon['ten'] == 'Trợ giúp') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HelpScreen(),
+                      ),
+                    );
                   }
                 },
                 borderRadius: BorderRadius.circular(10),
@@ -359,6 +397,29 @@ class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
           );
         }),
       ],
+    );
+  }
+
+  /// Hiển thị dialog "Coming Soon"
+  void _showComingSoon(BuildContext context, String feature) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Color(0xFF6C63FF)),
+            const SizedBox(width: 10),
+            const Text('Sắp ra mắt'),
+          ],
+        ),
+        content: Text('Tính năng "$feature" đang được phát triển và sẽ sớm có mặt!'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
     );
   }
 

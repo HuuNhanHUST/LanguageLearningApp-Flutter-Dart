@@ -163,45 +163,33 @@ class LearningNotifier extends StateNotifier<LearningState> {
         activityType: activityType,
       );
 
-      final updatedWordsLearnedToday = state.wordsLearnedToday + 1;
-      final cappedWordsLearnedToday = state.dailyLimit > 0
-          ? (updatedWordsLearnedToday > state.dailyLimit
-                ? state.dailyLimit
-                : updatedWordsLearnedToday)
-          : updatedWordsLearnedToday;
-      final updatedRemaining = state.dailyLimit > 0
-          ? state.dailyLimit - cappedWordsLearnedToday
-          : state.remaining;
+      // Từ đã học rồi - không cần update state
+      if (result['xpGained'] == 0) {
+        return {
+          'success': false,
+          'message': result['message'] ?? 'Bạn đã học từ này rồi!',
+        };
+      }
 
+      // Update state với data từ backend
       state = state.copyWith(
-        totalWordsLearned: state.totalWordsLearned + 1,
-        wordsLearnedToday: cappedWordsLearnedToday,
-        remaining: updatedRemaining < 0 ? 0 : updatedRemaining,
-        xp: (result['currentXP'] as int?) ?? state.xp,
-        level: (result['level'] as int?) ?? state.level,
-        xpInCurrentLevel:
-            (result['xpInCurrentLevel'] as int?) ?? state.xpInCurrentLevel,
-        xpNeededForNextLevel:
-            (result['xpNeededForNextLevel'] as int?) ??
-            state.xpNeededForNextLevel,
-        xpForNextLevel:
-            result['xpForNextLevel'] as int? ?? state.xpForNextLevel,
-        streak: (result['streak'] as int?) ?? state.streak,
+        totalWordsLearned: result['totalWordsLearned'] ?? state.totalWordsLearned,
+        wordsLearnedToday: result['wordsLearnedToday'] ?? state.wordsLearnedToday,
+        remaining: result['remaining'] ?? state.remaining,
+        xp: result['totalXp'] ?? state.xp,
+        level: result['level'] ?? state.level,
+        streak: result['streak'] ?? state.streak,
         learnedWordIds: [...state.learnedWordIds, wordId],
       );
 
       // Return result với thông tin level up
-      final xpGained = result['xpGained'] as int? ?? 0;
-      final leveledUp = result['leveledUp'] as bool? ?? false;
-
       return {
         'success': true,
-        'message': leveledUp
-            ? '🎉 Level Up! Bạn lên Level ${state.level}!'
-            : '✅ Đã học! +$xpGained XP',
-        'leveledUp': leveledUp,
-        'xpGained': xpGained,
-        'newLevel': state.level,
+        'message': result['message'],
+        'leveledUp': result['leveledUp'] ?? false,
+        'xpGained': result['xpGained'] ?? 0,
+        'newLevel': result['newLevel'] ?? state.level,
+        'oldLevel': result['oldLevel'] ?? state.level,
       };
     } catch (e) {
       state = state.copyWith(error: e.toString());
