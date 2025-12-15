@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/word_model.dart';
+import '../../../core/utils/haptic_utils.dart';
 
 // Constant styles for better performance
 const _kWordStyle = TextStyle(
@@ -52,8 +53,9 @@ class VocabularyCard extends StatelessWidget {
                 // Checkbox
                 Checkbox(
                   value: word.isMemorized,
-                  onChanged: (value) {
+                  onChanged: (value) async {
                     if (value != null && onMemorizedToggle != null) {
+                      await HapticUtils.lightImpact();
                       onMemorizedToggle!(value);
                     }
                   },
@@ -155,7 +157,10 @@ class VocabularyCard extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.delete_outline),
                     color: Colors.red[400],
-                    onPressed: () => _showDeleteConfirmation(context),
+                    onPressed: () async {
+                      await HapticUtils.lightImpact();
+                      _showDeleteConfirmation(context);
+                    },
                     tooltip: 'Xóa từ',
                   ),
               ],
@@ -180,7 +185,8 @@ class VocabularyCard extends StatelessWidget {
             child: const Text('Hủy'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
+              await HapticUtils.heavyImpact();
               Navigator.of(context).pop();
               onDelete?.call();
             },

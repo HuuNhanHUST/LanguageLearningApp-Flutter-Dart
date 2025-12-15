@@ -12,6 +12,7 @@ import '../../words/services/text_to_speech_service.dart';
 import '../../words/widgets/pronunciation_result_widget.dart';
 import '../../learning/providers/learning_provider.dart';
 import '../../learning/widgets/level_up_dialog.dart';
+import '../../../core/utils/haptic_utils.dart';
 
 /// Màn hình Bài học Phát âm
 /// Cho phép học và thực hành phát âm với ghi âm
@@ -81,29 +82,21 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
 
       final learningState = ref.read(learningProvider);
 
-      // Get all words from database
-      final allWords = await _pronunciationService.getWordsForPronunciation();
-
-      // Filter out learned words
-      final unlearnedWords = allWords
-          .where((word) => !learningState.learnedWordIds.contains(word.id))
-          .toList();
-
-      // Shuffle again to ensure different words each time
-      unlearnedWords.shuffle();
-
-      // Limit to remaining daily words (max 30/day)
-      final wordsToShow = unlearnedWords.take(learningState.remaining).toList();
+      // Sử dụng API mới: getDailyLessonWords
+      // API này trả về từ còn lại trong ngày, đã loại bỏ từ đã học
+      final dailyWords = await _pronunciationService.getDailyLessonWords();
 
       if (mounted) {
         setState(() {
-          _cacBaiTap = wordsToShow;
+          _cacBaiTap = dailyWords;
           _isLoadingWords = false;
         });
 
-        // Show info if no words available
-        if (wordsToShow.isEmpty) {
-          if (!learningState.canLearnMore) {
+        // Show info based on words available
+        if (dailyWords.isEmpty) {
+          // Check if reached daily limit or learned all words
+          final remaining = learningState.remaining;
+          if (remaining == 0 || !learningState.canLearnMore) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
@@ -113,7 +106,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
                 duration: Duration(seconds: 3),
               ),
             );
-          } else if (unlearnedWords.isEmpty) {
+          } else {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('🎓 Bạn đã học hết tất cả từ vựng!'),
@@ -122,6 +115,22 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
               ),
             );
           }
+          // Pop back to home since no words to learn
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        } else {
+          // Show thông báo số từ còn lại
+          final remainingToday = learningState.remaining;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '📚 Hôm nay bạn còn ${dailyWords.length} từ để học! (${learningState.wordsLearnedToday}/30)',
+              ),
+              backgroundColor: Colors.blue,
+              duration: const Duration(seconds: 2),
+            ),
+          );
         }
       }
     } catch (e) {
@@ -1129,7 +1138,8 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () {
+                        onPressed: () async {
+                          await HapticUtils.mediumImpact();
                           _chamDiemPhatAm(
                             target: targetText,
                             transcript: audioState.transcript!,
@@ -1240,7 +1250,10 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
         // Nút quay lại
         if (_buocHienTai > 0)
           ElevatedButton.icon(
-            onPressed: _quayLaiBaiTapTruoc,
+            onPressed: () async {
+              await HapticUtils.lightImpact();
+              _quayLaiBaiTapTruoc();
+            },
             icon: const Icon(Icons.arrow_back),
             label: const Text('Quay lại'),
             style: ElevatedButton.styleFrom(
@@ -1254,7 +1267,10 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
 
         // Nút tiếp theo / hoàn thành
         ElevatedButton.icon(
-          onPressed: _chuyenBaiTapTiepTheo,
+          onPressed: () async {
+            await HapticUtils.mediumImpact();
+            _chuyenBaiTapTiepTheo();
+          },
           icon: Icon(
             _buocHienTai < _cacBaiTap.length - 1
                 ? Icons.arrow_forward

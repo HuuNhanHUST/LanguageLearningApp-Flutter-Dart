@@ -59,7 +59,11 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
                       _xayDungHeader(user, learningState),
                       const SizedBox(height: 20),
 
-                      // Daily Progress Widget (NEW)
+                      // Card Tiến độ Level (như trong ảnh)
+                      _xayDungCardTienDoLevel(learningState),
+                      const SizedBox(height: 16),
+
+                      // Daily Progress Widget (card Tiến độ hôm nay + stats)
                       const DailyProgressWidget(),
                       const SizedBox(height: 20),
 
@@ -120,32 +124,145 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
             ),
           ],
         ),
-        // Avatar dẫn đến hồ sơ - Tối ưu với CachedAvatar
+        // Avatar với Level Badge
         GestureDetector(
           onTap: _moTrangHoSo,
-          child: Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
+          child: Stack(
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: CachedAvatar(
-              imageUrl: user?.avatar,
-              radius: 27,
-              fallbackText: user?.firstName ?? 'H',
-              backgroundColor: const Color(0xFF6C63FF),
-            ),
+                child: CachedAvatar(
+                  imageUrl: user?.avatar,
+                  radius: 27,
+                  fallbackText: user?.firstName ?? 'H',
+                  backgroundColor: const Color(0xFF6C63FF),
+                ),
+              ),
+              // Level Badge
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: Text(
+                    'Lv.${learningState.level}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
+    );
+  }
+
+  /// Xây dựng Card Tiến độ Level (giống ảnh)
+  Widget _xayDungCardTienDoLevel(LearningState learningState) {
+    // Tính toán XP cho level hiện tại và tiếp theo
+    final currentLevelXP = (learningState.level - 1) * (learningState.level - 1) * 100;
+    final nextLevelXP = learningState.level * learningState.level * 100;
+    final xpInCurrentLevel = learningState.xp - currentLevelXP;
+    final xpNeeded = nextLevelXP - currentLevelXP;
+    final progress = xpNeeded > 0 ? (xpInCurrentLevel / xpNeeded).clamp(0.0, 1.0) : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF3D2A7A), // Màu tím đậm giống ảnh
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          // Header: Tiến độ Level và XP
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Tiến độ Level',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                '$xpInCurrentLevel / $xpNeeded XP',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Progress bar với Lv.X bên trái và Lv.X+1 bên phải
+          Row(
+            children: [
+              // Level hiện tại
+              Text(
+                'Lv.${learningState.level}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 12),
+              
+              // Progress bar
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 8,
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFFFF6B9D), // Màu hồng giống ảnh
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(width: 12),
+              // Level tiếp theo
+              Text(
+                'Lv.${learningState.level + 1}',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

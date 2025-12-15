@@ -14,8 +14,8 @@ class ApiConstants {
   //static const String baseUrl = 'http://10.0.2.2:5000/api'; // Android Emulator
   // static const String baseUrl = 'http://192.168.1.5:5000/api'; // Thiết bị vật lý
   // static const String baseUrl = 'http://localhost:5000/api'; // iOS Simulator
-
-  static const String baseUrl = 'http://172.16.0.57:5000/api';
+  
+  static const String baseUrl = 'http://10.218.85.187:5000/api';
   // Auth Endpoints
   static const String register = '$baseUrl/users/register';
   static const String login = '$baseUrl/users/login';

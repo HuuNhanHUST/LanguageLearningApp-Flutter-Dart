@@ -46,6 +46,13 @@ class MyApp extends StatelessWidget {
                     seedColor: Colors.deepPurple,
                   ),
                   useMaterial3: true,
+                  // Smooth page transitions
+                  pageTransitionsTheme: const PageTransitionsTheme(
+                    builders: {
+                      TargetPlatform.android: ZoomPageTransitionsBuilder(),
+                      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+                    },
+                  ),
                 ),
                 routerConfig: _createRouter(authStatus),
               );

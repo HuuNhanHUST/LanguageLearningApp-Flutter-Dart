@@ -15,6 +15,51 @@ class PronunciationService {
     : _client = client ?? http.Client(),
       _authService = authService ?? AuthService();
 
+  /// Lấy danh sách từ vựng cho bài học hàng ngày (30 từ unique mỗi ngày)
+  /// Sử dụng API GET /words/daily-lesson
+  Future<List<WordModel>> getDailyLessonWords() async {
+    final token = await _authService.getAccessToken();
+    if (token == null) {
+      throw Exception('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+    }
+
+    try {
+      final response = await _client.get(
+        Uri.parse('${ApiConstants.getWords}/daily-lesson'),
+        headers: ApiConstants.getHeaders(token: token),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final wordsList = data['data']?['words'] as List?;
+
+        if (wordsList != null && wordsList.isNotEmpty) {
+          return wordsList
+              .map((item) => WordModel.fromJson(item as Map<String, dynamic>))
+              .toList();
+        }
+        
+        // Nếu đã đạt giới hạn 30 từ/ngày
+        if (data['data']?['dailyLimitReached'] == true) {
+          print('📅 Daily limit reached: ${data['message']}');
+          return [];
+        }
+        
+        // Nếu đã học hết tất cả từ
+        if (data['data']?['allLearned'] == true) {
+          print('🎓 All words learned at current level');
+          return [];
+        }
+      }
+
+      // Nếu có lỗi, trả về danh sách rỗng
+      return [];
+    } catch (e) {
+      print('Error getting daily lesson words: $e');
+      throw Exception('Lỗi tải bài học: $e');
+    }
+  }
+
   /// Lấy danh sách từ vựng cho bài học phát âm từ database
   /// Sử dụng API GET /words để lấy danh sách từ của user
   Future<List<WordModel>> getWordsForPronunciation({

@@ -50,29 +50,45 @@ exports.markWordLearned = async (req, res) => {
     today.setHours(0, 0, 0, 0);
     
     const lastLearningDate = user.lastLearningDate ? new Date(user.lastLearningDate) : null;
-    const isNewDay = !lastLearningDate || lastLearningDate < today;
+    let lastLearningDateNormalized = null;
+    if (lastLearningDate) {
+      lastLearningDateNormalized = new Date(lastLearningDate);
+      lastLearningDateNormalized.setHours(0, 0, 0, 0);
+    }
+    
+    const isNewDay = !lastLearningDateNormalized || lastLearningDateNormalized.getTime() < today.getTime();
 
     if (isNewDay) {
       // Reset daily count for new day
       user.wordsLearnedToday = 0;
-      user.lastLearningDate = new Date();
       
-      // Update streak
-      if (lastLearningDate) {
+      // Update streak BEFORE setting new lastLearningDate
+      if (lastLearningDateNormalized) {
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-        yesterday.setHours(0, 0, 0, 0);
         
-        if (lastLearningDate >= yesterday) {
-          // Continuous streak
+        const daysDiff = Math.floor((today.getTime() - lastLearningDateNormalized.getTime()) / (1000 * 60 * 60 * 24));
+        
+        console.log(`📅 Streak check: lastLearning=${lastLearningDateNormalized.toISOString()}, today=${today.toISOString()}, daysDiff=${daysDiff}`);
+        
+        if (daysDiff === 1) {
+          // Continuous streak - học liên tục
           user.streak = (user.streak || 0) + 1;
-        } else {
-          // Streak broken
+          console.log(`🔥 Streak increased to ${user.streak}`);
+        } else if (daysDiff > 1) {
+          // Streak broken - bỏ lỡ ngày
+          console.log(`💔 Streak broken, resetting to 1`);
           user.streak = 1;
         }
+        // daysDiff === 0 không thể xảy ra vì isNewDay đã check
       } else {
+        // Lần đầu học
         user.streak = 1;
+        console.log(`🆕 First time learning, streak = 1`);
       }
+      
+      // Set new lastLearningDate AFTER streak calculation
+      user.lastLearningDate = today;
     }
 
     // Check if reached daily limit (30 words/day)
@@ -168,7 +184,13 @@ exports.getProgress = async (req, res) => {
     today.setHours(0, 0, 0, 0);
     
     const lastLearningDate = user.lastLearningDate ? new Date(user.lastLearningDate) : null;
-    const isNewDay = !lastLearningDate || lastLearningDate < today;
+    let lastLearningDateNormalized = null;
+    if (lastLearningDate) {
+      lastLearningDateNormalized = new Date(lastLearningDate);
+      lastLearningDateNormalized.setHours(0, 0, 0, 0);
+    }
+    
+    const isNewDay = !lastLearningDateNormalized || lastLearningDateNormalized.getTime() < today.getTime();
 
     let wordsLearnedToday = user.wordsLearnedToday || 0;
     let streak = user.streak || 0;
@@ -176,9 +198,14 @@ exports.getProgress = async (req, res) => {
     if (isNewDay) {
       wordsLearnedToday = 0;
       
-      // KHÔNG tự động reset streak ở đây
-      // Streak chỉ được update khi user thực sự học từ (markWordLearned)
-      // Nếu lastLearningDate quá cũ, streak sẽ được reset khi học từ tiếp theo
+      // Kiểm tra nếu bỏ lỡ nhiều ngày thì streak = 0 (chưa học hôm nay)
+      if (lastLearningDateNormalized) {
+        const daysDiff = Math.floor((today.getTime() - lastLearningDateNormalized.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysDiff > 1) {
+          // Bỏ lỡ nhiều ngày - streak sẽ reset về 1 khi học từ đầu tiên
+          streak = 0;
+        }
+      }
     }
 
     const DAILY_LIMIT = 30;
