@@ -19,6 +19,7 @@ const gamificationRoutes = require('./src/routes/gamificationRoutes');
 const leaderboardRoutes = require('./src/routes/leaderboardRoutes');
 const grammarRoutes = require('./src/routes/grammarRoutes');
 const learningRoutes = require('./src/routes/learningRoutes');
+const badgeRoutes = require('./src/routes/badgeRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -67,6 +68,7 @@ app.use('/api/gamification', gamificationRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/grammar', grammarRoutes);
 app.use('/api/learning', learningRoutes);
+app.use('/api/badges', badgeRoutes);
 // app.use('/api/auth', authRoutes); // authRoutes removed after revert
 
 // 404 Handler

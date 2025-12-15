@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const { checkAndAwardBadges } = require('./badgeService');
 
 /**
  * Gamification Service
@@ -116,6 +117,15 @@ const addXP = async (userId, amount) => {
         const xpInCurrentLevel = user.xp - LEVEL_XP_REQUIREMENTS[newLevel];
         const xpNeededForNextLevel = xpForNextLevel ? (xpForNextLevel - user.xp) : 0;
         
+        // Check for new badges after XP gain
+        let badgeResult = null;
+        try {
+            badgeResult = await checkAndAwardBadges(userId, 'xp_gain');
+        } catch (badgeError) {
+            console.error('Error checking badges:', badgeError);
+            // Don't fail the entire operation if badge check fails
+        }
+        
         return {
             success: true,
             currentXP: user.xp,
@@ -128,7 +138,8 @@ const addXP = async (userId, amount) => {
             xpForNextLevel,
             xpInCurrentLevel,
             xpNeededForNextLevel,
-            streak: user.streak
+            streak: user.streak,
+            badges: badgeResult
         };
         
     } catch (error) {
@@ -160,6 +171,8 @@ const updateStreak = async (userId) => {
         const diffTime = Math.abs(now - lastActive);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
+        let badgeResult = null;
+        
         if (diffDays === 0) {
             // Cùng ngày - không thay đổi streak
             return {
@@ -173,10 +186,18 @@ const updateStreak = async (userId) => {
             user.lastActiveDate = new Date();
             await user.save();
             
+            // Check for streak badges
+            try {
+                badgeResult = await checkAndAwardBadges(userId, 'daily_practice');
+            } catch (badgeError) {
+                console.error('Error checking badges:', badgeError);
+            }
+            
             return {
                 streak: user.streak,
                 streakMaintained: true,
-                streakBroken: false
+                streakBroken: false,
+                badges: badgeResult
             };
         } else {
             // Quá 1 ngày - reset streak
@@ -212,6 +233,19 @@ const completeLessonActivity = async (userId, lessonData) => {
             throw new Error('Score must be between 0 and 100');
         }
         
+        // Update user stats
+        const user = await User.findById(userId);
+        if (user) {
+            user.lessonsCompleted = (user.lessonsCompleted || 0) + 1;
+            
+            // Track perfect scores
+            if (score === 100) {
+                user.perfectScores = (user.perfectScores || 0) + 1;
+            }
+            
+            await user.save();
+        }
+        
         // Tính XP dựa trên score
         const xpEarned = calculateXPFromScore(score, difficulty);
         
@@ -221,11 +255,21 @@ const completeLessonActivity = async (userId, lessonData) => {
         // Cập nhật streak
         const streakResult = await updateStreak(userId);
         
+        // Check for lesson and perfect score badges
+        let badgeResult = null;
+        try {
+            const activityTypeMap = score === 100 ? 'perfect_score' : 'complete_lesson';
+            badgeResult = await checkAndAwardBadges(userId, activityTypeMap);
+        } catch (badgeError) {
+            console.error('Error checking badges:', badgeError);
+        }
+        
         return {
             success: true,
             message: 'Lesson completed successfully',
             xp: xpResult,
             streak: streakResult,
+            badges: badgeResult,
             activityType,
             score
         };

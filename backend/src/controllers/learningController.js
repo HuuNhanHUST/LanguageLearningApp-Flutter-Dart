@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const { calculateLevel, getXPForNextLevel } = require('../services/gamificationService');
+const { checkAndAwardBadges } = require('../services/badgeService');
 
 /**
  * @desc    Mark word as learned and earn XP
@@ -128,6 +129,15 @@ exports.markWordLearned = async (req, res) => {
     
     console.log(`✅ Word learned! User: ${user.username}, XP: ${user.xp}, Level: ${user.level}, Total: ${user.totalWordsLearned}, Today: ${user.wordsLearnedToday}, Streak: ${user.streak}`);
 
+    // Check for new badges after learning word
+    let badgeResult = null;
+    try {
+      badgeResult = await checkAndAwardBadges(userId.toString(), 'learn_word');
+    } catch (badgeError) {
+      console.error('Error checking badges:', badgeError);
+      // Don't fail the word learning if badge check fails
+    }
+
     // Calculate remaining words for today
     const remaining = DAILY_LIMIT - user.wordsLearnedToday;
 
@@ -147,6 +157,7 @@ exports.markWordLearned = async (req, res) => {
         totalWordsLearned: user.totalWordsLearned,
         remaining: remaining,
         streak: user.streak,
+        badges: badgeResult
       },
     });
   } catch (error) {

@@ -122,6 +122,33 @@ const userSchema = new mongoose.Schema({
         }
     }],
     
+    // Badges - Achievement system
+    badges: [{
+        badgeId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Badge',
+            required: true
+        },
+        earnedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
+    
+    // Additional statistics for badge criteria
+    lessonsCompleted: {
+        type: Number,
+        default: 0
+    },
+    perfectScores: {
+        type: Number,
+        default: 0
+    },
+    dailyGoalStreak: {
+        type: Number,
+        default: 0
+    },
+    
     // User Preferences
     preferences: {
         dailyGoal: {
