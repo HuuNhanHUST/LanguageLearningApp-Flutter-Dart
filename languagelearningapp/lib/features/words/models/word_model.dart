@@ -5,6 +5,7 @@ class WordModel {
   final String type;
   final String? example;
   final String? topic;
+  final String? difficulty; // beginner, intermediate, advanced
   final bool isMemorized;
 
   const WordModel({
@@ -14,6 +15,7 @@ class WordModel {
     required this.type,
     this.example,
     this.topic,
+    this.difficulty,
     this.isMemorized = false,
   });
 
@@ -25,6 +27,7 @@ class WordModel {
       type: json['type']?.toString() ?? 'other',
       example: json['example']?.toString(),
       topic: json['topic']?.toString(),
+      difficulty: json['difficulty']?.toString(),
       isMemorized: json['isMemorized'] == true,
     );
   }
@@ -37,6 +40,7 @@ class WordModel {
       'type': type,
       'example': example,
       'topic': topic,
+      'difficulty': difficulty,
       'isMemorized': isMemorized,
     };
   }

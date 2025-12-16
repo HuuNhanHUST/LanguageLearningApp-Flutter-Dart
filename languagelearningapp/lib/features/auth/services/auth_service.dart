@@ -208,6 +208,31 @@ class AuthService {
     }
   }
 
+  /// Delete user account
+  Future<void> deleteAccount({required String password}) async {
+    try {
+      final token = await getAccessToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final response = await _client.delete(
+        Uri.parse(ApiConstants.deleteAccount),
+        headers: ApiConstants.getHeaders(token: token),
+        body: jsonEncode({'password': password}),
+      );
+
+      if (response.statusCode == 200) {
+        await _clearStoredAuthData();
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Failed to delete account');
+      }
+    } catch (e) {
+      throw Exception('Delete account error: $e');
+    }
+  }
+
   /// Logout user
   Future<void> logout() async {
     try {

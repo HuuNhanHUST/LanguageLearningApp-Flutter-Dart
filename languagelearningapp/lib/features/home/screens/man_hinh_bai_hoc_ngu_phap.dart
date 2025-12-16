@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,8 +5,6 @@ import '../../learning/providers/learning_provider.dart';
 import '../../learning/widgets/level_up_dialog.dart';
 import '../../lessons/models/grammar_question_model.dart';
 import '../../lessons/services/grammar_question_service.dart';
-import '../../words/models/word_model.dart';
-import '../../words/services/pronunciation_service.dart';
 
 class ManHinhBaiHocNguPhap extends ConsumerStatefulWidget {
   final String tenBaiHoc;
@@ -25,16 +21,11 @@ class ManHinhBaiHocNguPhap extends ConsumerStatefulWidget {
 }
 
 class _ManHinhBaiHocNguPhapState extends ConsumerState<ManHinhBaiHocNguPhap> {
-  final PronunciationService _wordService = PronunciationService();
   final GrammarQuestionService _grammarService = GrammarQuestionService();
 
   bool _isLoadingWords = true;
-  bool _isLoadingQuestions = false;
   bool _isMarkingWord = false;
   String? _error;
-
-  List<WordModel> _words = [];
-  int _currentWordIndex = 0;
 
   List<GrammarQuestionModel> _questions = [];
   int _currentQuestionIndex = 0;
@@ -63,83 +54,64 @@ class _ManHinhBaiHocNguPhapState extends ConsumerState<ManHinhBaiHocNguPhap> {
       await Future.delayed(const Duration(milliseconds: 100));
       final learningState = ref.read(learningProvider);
 
-      final allWords = await _wordService.getWordsForPronunciation();
-      final unlearnedWords = allWords
-          .where((word) => !learningState.learnedWordIds.contains(word.id))
-          .toList();
-
-      unlearnedWords.shuffle(Random());
-      final limit = learningState.remaining <= 0 ? 0 : learningState.remaining;
-      final wordsToShow = limit > 0
-          ? unlearnedWords.take(limit).toList()
-          : <WordModel>[];
-
-      if (!mounted) return;
-
-      setState(() {
-        _words = wordsToShow;
-        _currentWordIndex = 0;
-        _isLoadingWords = false;
-      });
-
-      if (wordsToShow.isEmpty) {
-        if (!learningState.canLearnMore) {
-          _showSnack('🎉 Bạn đã hoàn thành 30 thử thách hôm nay!');
-        } else if (unlearnedWords.isEmpty) {
-          _showSnack('🎓 Bạn đã học hết từ vựng hiện có!');
-        }
+      // Kiểm tra daily limit grammar
+      if (!learningState.canLearnGrammar) {
+        if (!mounted) return;
+        setState(() {
+          _isLoadingWords = false;
+          _error = '🎉 Đã hoàn thành ${learningState.grammarDailyLimit} câu ngữ pháp hôm nay! Quay lại vào ngày mai nhé!';
+        });
         return;
       }
 
-      await _taiCauHoiChoTu(wordsToShow.first);
+      // Map level to difficulty
+      final userLevel = learningState.level;
+      final difficulty = _getDifficultyForLevel(userLevel);
+      final remainingInLimit = learningState.grammarRemaining;
+      
+      print('🎯 Grammar lesson - Level: $userLevel, Difficulty: $difficulty, Remaining: $remainingInLimit/${learningState.grammarDailyLimit}');
+
+      // LUÔN LUÔN lấy 10 câu hỏi để hiển thị đầy đủ
+      final questions = await _grammarService.fetchRandomQuestions(
+        difficulty: difficulty,
+        limit: 10,
+      );
+      
+      if (!mounted) return;
+
+      // Chỉ cho phép làm số câu = remainingInLimit
+      final allowedQuestions = questions.take(remainingInLimit).toList();
+      
+      print('📝 Loaded ${questions.length} questions, allowing $remainingInLimit questions');
+      
+      if (allowedQuestions.isEmpty) {
+        setState(() {
+          _isLoadingWords = false;
+          _error = 'Chưa có câu hỏi ngữ pháp nào cho level của bạn. Hệ thống đang tạo câu hỏi mới!';
+        });
+        return;
+      }
+
+      setState(() {
+        _questions = allowedQuestions;  // Chỉ lấy số câu được phép
+        _currentQuestionIndex = 0;
+        _isLoadingWords = false;
+      });
+
+      print('✅ Ready to practice with ${allowedQuestions.length} questions');
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoadingWords = false;
-        _error = 'Không thể tải dữ liệu: $e';
+        _error = 'Không thể tải câu hỏi: $e';
       });
     }
   }
 
-  Future<void> _taiCauHoiChoTu(WordModel word) async {
-    setState(() {
-      _isLoadingQuestions = true;
-      _questions = [];
-      _currentQuestionIndex = 0;
-      _selectedOptionIndex = null;
-      _answered = false;
-      _isAnswerCorrect = false;
-      _error = null;
-    });
-
-    try {
-      final questions = await _grammarService.fetchQuestions(
-        wordId: word.id,
-        limit: 2,
-        difficulty: 'intermediate',
-        lessonKey: 'lesson-2',
-      );
-
-      if (!mounted) return;
-      setState(() {
-        _questions = questions;
-        _currentQuestionIndex = 0;
-        _selectedOptionIndex = null;
-        _answered = false;
-        _isAnswerCorrect = false;
-        _isLoadingQuestions = false;
-      });
-
-      if (questions.isEmpty) {
-        _showSnack('Chưa có câu hỏi cho từ này, thử lại sau nhé!');
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoadingQuestions = false;
-        _error = 'Lỗi tải câu hỏi: $e';
-      });
-    }
+  String _getDifficultyForLevel(int level) {
+    if (level <= 3) return 'beginner';
+    if (level <= 6) return 'intermediate';
+    return 'advanced';
   }
 
   void _chonDapAn(int index) {
@@ -186,15 +158,13 @@ class _ManHinhBaiHocNguPhapState extends ConsumerState<ManHinhBaiHocNguPhap> {
   Future<void> _hoanThanhTuHienTai() async {
     if (_isMarkingWord) return;
     final learningNotifier = ref.read(learningProvider.notifier);
-    final currentWord = _currentWord;
 
     setState(() => _isMarkingWord = true);
 
-    final result = await learningNotifier.markWordLearned(
-      currentWord.id,
-      activityType: 'grammar',
+    // Chỉ add XP cho grammar, không đánh dấu từ là đã học
+    final result = await learningNotifier.addGrammarXp(
+      xpAmount: _isAnswerCorrect ? 120 : 100,
       difficulty: 'medium',
-      score: _isAnswerCorrect ? 120 : 100,
     );
 
     if (!mounted) return;
@@ -203,6 +173,17 @@ class _ManHinhBaiHocNguPhapState extends ConsumerState<ManHinhBaiHocNguPhap> {
 
     if (result['success'] == true) {
       _showSnack(result['message'] as String? ?? 'Hoàn thành!', background: const Color(0xFF6C63FF));
+
+      // Check grammar limit sau khi submit (state đã update trong addGrammarXp)
+      final updatedState = ref.read(learningProvider);
+      if (!updatedState.canLearnGrammar) {
+        // Đã đạt limit 10 câu/ngày
+        setState(() {
+          _questions = [];
+        });
+        _showSnack('🎉 Đã hoàn thành ${updatedState.grammarDailyLimit} câu ngữ pháp hôm nay! Quay lại vào ngày mai nhé!', background: const Color(0xFF4CAF50));
+        return;
+      }
 
       if (result['leveledUp'] == true) {
         await Future.delayed(const Duration(milliseconds: 300));
@@ -222,23 +203,27 @@ class _ManHinhBaiHocNguPhapState extends ConsumerState<ManHinhBaiHocNguPhap> {
     }
 
     if (!mounted) return;
-
-    final nextWordIndex = _currentWordIndex + 1;
-    if (nextWordIndex >= _words.length) {
+    
+    // Kiểm tra xem còn câu hỏi nào không
+    if (_currentQuestionIndex >= _questions.length - 1) {
+      // Đã hoàn thành tất cả câu được phép trong ngày
       setState(() {
-        _currentWordIndex = nextWordIndex;
         _questions = [];
       });
+      _showSnack('🎉 Đã hoàn thành ${ref.read(learningProvider).grammarDailyLimit} câu ngữ pháp hôm nay! Quay lại vào ngày mai nhé!', 
+        background: const Color(0xFF4CAF50));
       return;
     }
 
+    // Chuyển sang câu tiếp theo
     setState(() {
-      _currentWordIndex = nextWordIndex;
+      _currentQuestionIndex++;
+      _selectedOptionIndex = null;
+      _answered = false;
+      _isAnswerCorrect = false;
     });
-    await _taiCauHoiChoTu(_currentWord);
   }
 
-  WordModel get _currentWord => _words[_currentWordIndex];
   GrammarQuestionModel get _currentQuestion => _questions[_currentQuestionIndex];
 
   void _showSnack(String message, {Color background = Colors.black87}) {
@@ -268,13 +253,11 @@ class _ManHinhBaiHocNguPhapState extends ConsumerState<ManHinhBaiHocNguPhap> {
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : !_coTheHoc(learningState)
               ? _xayDungTrangThaiTrong(learningState)
-              : _isLoadingQuestions
-                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                  : _questions.isEmpty
-                      ? _xayDungTrangThaiKhongCoCauHoi()
-                      : SafeArea(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.only(bottom: 24),
+              : _questions.isEmpty
+                  ? _xayDungTrangThaiKhongCoCauHoi()
+                  : SafeArea(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.only(bottom: 24),
                             child: _xayDungNoiDungBaiHoc(learningState),
                           ),
                         ),
@@ -282,7 +265,7 @@ class _ManHinhBaiHocNguPhapState extends ConsumerState<ManHinhBaiHocNguPhap> {
   }
 
   bool _coTheHoc(LearningState state) {
-    return state.canLearnMore && _words.isNotEmpty && _currentWordIndex < _words.length;
+    return _questions.isNotEmpty && state.canLearnGrammar;
   }
 
   Widget _xayDungTrangThaiTrong(LearningState state) {
@@ -333,13 +316,13 @@ class _ManHinhBaiHocNguPhapState extends ConsumerState<ManHinhBaiHocNguPhap> {
             const Icon(Icons.pending_actions, color: Colors.white70, size: 64),
             const SizedBox(height: 16),
             Text(
-              _error ?? 'Chưa có câu hỏi cho từ này, thử từ khác nhé!',
+              _error ?? 'Chưa có câu hỏi cho level của bạn!',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
-              onPressed: () => _taiCauHoiChoTu(_currentWord),
+              onPressed: _taiDanhSachTu,
               icon: const Icon(Icons.refresh),
               label: const Text('Thử lại'),
             ),
@@ -350,7 +333,6 @@ class _ManHinhBaiHocNguPhapState extends ConsumerState<ManHinhBaiHocNguPhap> {
   }
 
   Widget _xayDungNoiDungBaiHoc(LearningState state) {
-    final word = _currentWord;
     final question = _currentQuestion;
 
     return Padding(
@@ -359,64 +341,12 @@ class _ManHinhBaiHocNguPhapState extends ConsumerState<ManHinhBaiHocNguPhap> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _xayDungThongTinTu(word, state),
           const SizedBox(height: 20),
           _xayDungTheCauHoi(question),
           const SizedBox(height: 24),
           _xayDungDanhSachLuaChon(question),
           const SizedBox(height: 24),
           _xayDungNutHanhDong(),
-        ],
-      ),
-    );
-  }
-
-  Widget _xayDungThongTinTu(WordModel word, LearningState state) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            word.word,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            word.meaning,
-            style: const TextStyle(color: Colors.white70, fontSize: 16),
-          ),
-          if (word.example?.isNotEmpty == true) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Ví dụ: ${word.example}',
-              style: const TextStyle(color: Colors.white60, fontSize: 14),
-            ),
-          ],
-          const SizedBox(height: 16),
-          LinearProgressIndicator(
-            value: state.dailyLimit == 0
-                ? 0
-                : (state.wordsLearnedToday / state.dailyLimit).clamp(0.0, 1.0),
-            minHeight: 6,
-            backgroundColor: Colors.white12,
-            valueColor: const AlwaysStoppedAnimation(Colors.cyanAccent),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Còn lại hôm nay: ${state.remaining} thử thách',
-            style: const TextStyle(color: Colors.white60, fontSize: 12),
-          ),
         ],
       ),
     );

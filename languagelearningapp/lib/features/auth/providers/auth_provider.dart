@@ -207,6 +207,12 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Update user data
+  void updateUser(User updatedUser) {
+    _user = updatedUser;
+    _notifyStateChanged();
+  }
+
   /// Logout user
   Future<void> logout() async {
     try {
