@@ -82,3 +82,33 @@ exports.generateQuestions = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get random grammar questions by difficulty (no wordId needed)
+ * For grammar practice lesson
+ */
+exports.getRandomQuestions = async (req, res) => {
+  try {
+    const { difficulty = 'beginner', limit = 10 } = req.query;
+
+    const questions = await grammarQuestionService.getRandomQuestionsByDifficulty({
+      difficulty,
+      limit: limit ? Number(limit) : 10,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        difficulty,
+        count: questions.length,
+        questions,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to load random grammar questions:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Unable to fetch random grammar questions',
+    });
+  }
+};

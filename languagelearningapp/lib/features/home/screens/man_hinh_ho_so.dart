@@ -9,8 +9,6 @@ import '../../auth/providers/auth_provider.dart';
 import '../../learning/providers/learning_provider.dart';
 import '../../user/user.dart'; // Import user stats widget
 import '../../profile/screens/edit_profile_screen.dart';
-import '../../profile/screens/notifications_screen.dart';
-import '../../profile/screens/language_settings_screen.dart';
 import '../../profile/screens/security_screen.dart';
 import '../../profile/screens/help_screen.dart';
 
@@ -63,6 +61,7 @@ class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
               children: [
                 // Header với avatar và thông tin (dựa trên dữ liệu thực)
                 FutureBuilder<User?>(
+                  key: ValueKey(DateTime.now().millisecondsSinceEpoch),
                   future: _loadUserProfile(authService),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -281,16 +280,6 @@ class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
         'ten': 'Chỉnh sửa hồ sơ',
         'mau': const Color(0xFF6C63FF),
       },
-      {
-        'icon': Icons.notifications,
-        'ten': 'Thông báo',
-        'mau': const Color(0xFF4CAF50),
-      },
-      {
-        'icon': Icons.language,
-        'ten': 'Ngôn ngữ học',
-        'mau': const Color(0xFFFF9800),
-      },
       {'icon': Icons.lock, 'ten': 'Bảo mật', 'mau': const Color(0xFFE91E63)},
       {'icon': Icons.help, 'ten': 'Trợ giúp', 'mau': const Color(0xFF00BCD4)},
       {
@@ -318,30 +307,20 @@ class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: () {
+                onTap: () async {
                   if (tuyChon['ten'] == 'Đăng xuất') {
                     _xuLyDangXuat(context);
                   } else if (tuyChon['ten'] == 'Chỉnh sửa hồ sơ') {
-                    Navigator.push(
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const EditProfileScreen(),
                       ),
                     );
-                  } else if (tuyChon['ten'] == 'Thông báo') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const NotificationsScreen(),
-                      ),
-                    );
-                  } else if (tuyChon['ten'] == 'Ngôn ngữ học') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LanguageSettingsScreen(),
-                      ),
-                    );
+                    // Reload profile after returning from edit screen
+                    if (mounted) {
+                      setState(() {});
+                    }
                   } else if (tuyChon['ten'] == 'Bảo mật') {
                     Navigator.push(
                       context,

@@ -65,6 +65,8 @@ class PronunciationService {
   Future<List<WordModel>> getWordsForPronunciation({
     String? topic,
     int? limit, // Đổi thành nullable để có thể lấy tất cả từ
+    bool forGrammarLesson = false, // Nếu true, không check daily limit
+    int? userLevel, // Filter theo level của user
   }) async {
     final token = await _authService.getAccessToken();
     if (token == null) {
@@ -85,15 +87,43 @@ class PronunciationService {
         headers: ApiConstants.getHeaders(token: token),
       );
 
+      print('🌐 GET $url - Status: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final wordsList = data['data']?['words'] as List?;
+        
+        print('📖 API Response: ${wordsList?.length ?? 0} words received');
+        print('📦 Response data: ${data['data']?.keys ?? "null"}');
 
         if (wordsList != null && wordsList.isNotEmpty) {
           // Chuyển đổi thành danh sách WordModel
-          final allWords = wordsList
-              .map((item) => WordModel.fromJson(item as Map<String, dynamic>))
+          var allWords = wordsList
+              .map((item) {
+                final word = WordModel.fromJson(item as Map<String, dynamic>);
+                print('📝 Word loaded: ${word.word} (id: ${word.id}, difficulty: ${word.difficulty ?? "N/A"})');
+                return word;
+              })
               .toList();
+
+          // Filter theo level/difficulty nếu đang lấy cho grammar lesson
+          if (forGrammarLesson && userLevel != null) {
+            // Kiểm tra xem có từ nào có difficulty không
+            final wordsWithDifficulty = allWords.where((w) => w.difficulty != null).toList();
+            
+            if (wordsWithDifficulty.isNotEmpty) {
+              // Nếu có difficulty trong database, filter theo level
+              final targetDifficulty = _getDifficultyForLevel(userLevel);
+              allWords = allWords.where((word) {
+                final difficulty = word.difficulty ?? 'beginner';
+                return difficulty == targetDifficulty;
+              }).toList();
+              print('🎯 Filtered to ${allWords.length} words for level $userLevel (difficulty: $targetDifficulty)');
+            } else {
+              // Nếu không có difficulty trong DB, lấy tất cả từ
+              print('⚠️ No difficulty data in DB, using all ${allWords.length} words for grammar lesson');
+            }
+          }
 
           // Shuffle để random
           allWords.shuffle();
@@ -115,12 +145,24 @@ class PronunciationService {
     }
   }
 
+  /// Map user level to difficulty
+  String _getDifficultyForLevel(int level) {
+    if (level <= 3) {
+      return 'beginner';     // Level 1-3
+    } else if (level <= 6) {
+      return 'intermediate'; // Level 4-6
+    } else {
+      return 'advanced';     // Level 7+
+    }
+  }
+
   /// Danh sách từ mẫu khi chưa có API
   /// để 1 cái đề phòng không có từ trong database
   List<WordModel> _getDemoWords() {
+    print('⚠️ WARNING: Using demo words fallback - no words from API');
     return [
       const WordModel(
-        id: '1',
+        id: '000000000000000000000001', // Valid ObjectId format for demo
         word: 'Apple',
         meaning: 'Quả táo',
         type: 'noun',

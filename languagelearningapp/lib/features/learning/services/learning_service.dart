@@ -207,6 +207,69 @@ class LearningService {
     }
   }
 
+  /// Chỉ thêm XP cho grammar practice (không đánh dấu từ là đã học)
+  /// POST /api/learning/xp-only
+  /// Body: { xpAmount, activityType, difficulty }
+  Future<Map<String, dynamic>> addXpOnly({
+    required int xpAmount,
+    required String activityType,
+    required String difficulty,
+  }) async {
+    final token = await _authService.getAccessToken();
+    if (token == null) {
+      throw Exception('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+    }
+
+    try {
+      final response = await _client
+          .post(
+            Uri.parse('${ApiConstants.baseUrl}/learning/xp-only'),
+            headers: ApiConstants.getHeaders(token: token),
+            body: jsonEncode({
+              'xpAmount': xpAmount,
+              'activityType': activityType,
+              'difficulty': difficulty,
+            }),
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('Request timeout');
+            },
+          );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (data['success'] == true) {
+          return {
+            'success': true,
+            'message': data['message'] ?? 'XP added!',
+            'leveledUp': data['data']?['leveledUp'] ?? false,
+            'xpGained': data['data']?['xpGained'] ?? xpAmount,
+            'totalXp': data['data']?['totalXp'] ?? 0,
+            'level': data['data']?['level'] ?? 1,
+            'oldLevel': data['data']?['oldLevel'] ?? 1,
+            'newLevel': data['data']?['newLevel'] ?? 1,
+          };
+        } else {
+          throw Exception(data['message'] ?? 'Failed to add XP');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Phiên đăng nhập đã hết hạn');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Không thể cập nhật XP');
+      }
+    } catch (e) {
+      if (e.toString().contains('SocketException')) {
+        throw Exception(
+          'Không thể kết nối với server. Vui lòng kiểm tra kết nối mạng.',
+        );
+      }
+      rethrow;
+    }
+  }
+
   /// Lấy thông tin gamification (XP, level boundaries)
   /// GET /api/gamification/stats
   Future<Map<String, dynamic>> getGamificationStats() async {

@@ -7,6 +7,9 @@ class LearningState {
   final int wordsLearnedToday;
   final int remaining;
   final int dailyLimit;
+  final int grammarQuestionsToday;
+  final int grammarRemaining;
+  final int grammarDailyLimit;
   final int xp;
   final int level;
   final int xpInCurrentLevel;
@@ -22,6 +25,9 @@ class LearningState {
     this.wordsLearnedToday = 0,
     this.remaining = 30,
     this.dailyLimit = 30,
+    this.grammarQuestionsToday = 0,
+    this.grammarRemaining = 10,
+    this.grammarDailyLimit = 10,
     this.xp = 0,
     this.level = 1,
     this.xpInCurrentLevel = 0,
@@ -38,6 +44,9 @@ class LearningState {
     int? wordsLearnedToday,
     int? remaining,
     int? dailyLimit,
+    int? grammarQuestionsToday,
+    int? grammarRemaining,
+    int? grammarDailyLimit,
     int? xp,
     int? level,
     int? xpInCurrentLevel,
@@ -53,6 +62,9 @@ class LearningState {
       wordsLearnedToday: wordsLearnedToday ?? this.wordsLearnedToday,
       remaining: remaining ?? this.remaining,
       dailyLimit: dailyLimit ?? this.dailyLimit,
+      grammarQuestionsToday: grammarQuestionsToday ?? this.grammarQuestionsToday,
+      grammarRemaining: grammarRemaining ?? this.grammarRemaining,
+      grammarDailyLimit: grammarDailyLimit ?? this.grammarDailyLimit,
       xp: xp ?? this.xp,
       level: level ?? this.level,
       xpInCurrentLevel: xpInCurrentLevel ?? this.xpInCurrentLevel,
@@ -73,6 +85,7 @@ class LearningState {
 
   /// Check xem còn học được không
   bool get canLearnMore => remaining > 0;
+  bool get canLearnGrammar => grammarRemaining > 0;
 
   /// Tiến độ XP trong level hiện tại (0..1)
   double get xpProgress {
@@ -116,6 +129,9 @@ class LearningNotifier extends StateNotifier<LearningState> {
         wordsLearnedToday: progress['wordsLearnedToday'] as int,
         remaining: progress['remaining'] as int,
         dailyLimit: progress['dailyLimit'] as int,
+        grammarQuestionsToday: progress['grammarQuestionsToday'] as int? ?? 0,
+        grammarRemaining: progress['grammarRemaining'] as int? ?? 10,
+        grammarDailyLimit: progress['grammarDailyLimit'] as int? ?? 10,
         xp: (gamification['currentXP'] ?? progress['xp']) as int,
         level: (gamification['level'] ?? progress['level']) as int,
         xpInCurrentLevel:
@@ -200,6 +216,43 @@ class LearningNotifier extends StateNotifier<LearningState> {
   /// Check xem một từ đã được học chưa
   bool isWordLearned(String wordId) {
     return state.learnedWordIds.contains(wordId);
+  }
+
+  /// Thêm XP cho grammar practice (không đánh dấu từ là đã học)
+  Future<Map<String, dynamic>> addGrammarXp({
+    required int xpAmount,
+    String difficulty = 'medium',
+  }) async {
+    try {
+      // Gọi API để chỉ cộng XP, không mark word learned
+      final result = await _learningService.addXpOnly(
+        xpAmount: xpAmount,
+        activityType: 'grammar',
+        difficulty: difficulty,
+      );
+
+      // Update state với XP, level VÀ grammar count
+      state = state.copyWith(
+        xp: result['totalXp'] ?? state.xp,
+        level: result['level'] ?? state.level,
+        grammarQuestionsToday: result['grammarQuestionsToday'] ?? state.grammarQuestionsToday,
+        grammarRemaining: (result['grammarDailyLimit'] ?? 10) - (result['grammarQuestionsToday'] ?? 0),
+      );
+
+      // Return result với thông tin level up
+      return {
+        'success': true,
+        'message': result['message'] ?? 'Hoàn thành!',
+        'leveledUp': result['leveledUp'] ?? false,
+        'xpGained': result['xpGained'] ?? xpAmount,
+        'newLevel': result['newLevel'] ?? state.level,
+        'oldLevel': result['oldLevel'] ?? state.level,
+        'grammarQuestionsToday': result['grammarQuestionsToday'] ?? state.grammarQuestionsToday,
+      };
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      return {'success': false, 'message': 'Lỗi: ${e.toString()}'};
+    }
   }
 
   /// Reset error

@@ -10,8 +10,6 @@ import '../models/badge_model.dart';
 import '../services/profile_service.dart';
 import '../widgets/badge_card.dart';
 import 'edit_profile_screen.dart';
-import 'notifications_screen.dart';
-import 'language_settings_screen.dart';
 import 'security_screen.dart';
 import 'help_screen.dart';
 
@@ -239,13 +237,17 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
                 ),
               ),
               IconButton(
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const EditProfileScreen(),
                     ),
                   );
+                  // Reload profile after returning from edit screen
+                  if (mounted) {
+                    _taiDuLieu();
+                  }
                 },
                 icon: const Icon(Icons.edit, color: Colors.white),
               ),
@@ -425,34 +427,6 @@ class _ManHinhHoSoNguoiDungState extends ConsumerState<ManHinhHoSoNguoiDung> {
 
   Widget _buildSettingsSection() {
     final settingsItems = [
-      _SettingsItem(
-        icon: Icons.notifications_outlined,
-        title: 'Thông báo',
-        subtitle: 'Quản lý thông báo học tập',
-        color: const Color(0xFF6C63FF),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const NotificationsScreen(),
-            ),
-          );
-        },
-      ),
-      _SettingsItem(
-        icon: Icons.translate,
-        title: 'Ngôn ngữ',
-        subtitle: 'Chọn ngôn ngữ học và giao diện',
-        color: Colors.blue,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const LanguageSettingsScreen(),
-            ),
-          );
-        },
-      ),
       _SettingsItem(
         icon: Icons.security,
         title: 'Bảo mật',

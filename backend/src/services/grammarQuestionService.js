@@ -118,6 +118,70 @@ const grammarQuestionService = {
     questions = await this.getCachedQuestions({ wordId, limit: safeDesired });
     return questions;
   },
+
+  /**
+   * Get random grammar questions by difficulty (for grammar practice lesson)
+   * No wordId needed - gets questions from all words
+   */
+  async getRandomQuestionsByDifficulty({ difficulty = 'beginner', limit = 10 }) {
+    const safeLimit = clampCount(limit);
+    
+    // Get random questions matching difficulty
+    let questions = await GrammarQuestion.aggregate([
+      { $match: { difficulty: difficulty } },
+      { $sample: { size: safeLimit } },
+    ]);
+
+    console.log(`📚 Grammar questions - Requested: ${safeLimit} ${difficulty}, Found: ${questions.length}`);
+
+    // If not enough questions, try to get from ANY difficulty
+    if (questions.length < safeLimit) {
+      console.log(`⚠️ Not enough ${difficulty} questions, fetching from all difficulties...`);
+      
+      const additionalNeeded = safeLimit - questions.length;
+      const existingIds = questions.map(q => q._id.toString());
+      
+      // Get random questions from ANY difficulty (excluding already selected)
+      const additionalQuestions = await GrammarQuestion.aggregate([
+        { $match: { _id: { $nin: questions.map(q => q._id) } } },
+        { $sample: { size: additionalNeeded } },
+      ]);
+      
+      questions = [...questions, ...additionalQuestions];
+      console.log(`✅ Added ${additionalQuestions.length} questions from other difficulties. Total: ${questions.length}`);
+    }
+
+    // If still not enough, generate from random words
+    if (questions.length < safeLimit) {
+      console.log(`⚠️ Still need ${safeLimit - questions.length} more questions, generating...`);
+      
+      // Get random words (any difficulty)
+      const words = await Word.aggregate([
+        { $sample: { size: safeLimit - questions.length } },
+      ]);
+
+      console.log(`📝 Generating questions for ${words.length} random words`);
+
+      // Generate questions for these words
+      for (const word of words) {
+        try {
+          const generated = await this.generateQuestions({
+            wordId: word._id,
+            count: 1,
+            difficulty: word.difficulty || difficulty,
+            lessonKey: 'grammar-practice',
+          });
+          questions.push(...generated);
+          console.log(`✅ Generated question for word: ${word.word}`);
+        } catch (error) {
+          console.error(`❌ Failed to generate question for word ${word._id}:`, error.message);
+        }
+      }
+    }
+
+    console.log(`🎯 Final result: ${questions.length}/${safeLimit} questions ready`);
+    return questions.slice(0, safeLimit);
+  },
 };
 
 module.exports = grammarQuestionService;

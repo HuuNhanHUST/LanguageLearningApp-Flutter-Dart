@@ -89,6 +89,10 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    longestStreak: {
+        type: Number,
+        default: 0
+    },
     lastActiveDate: {
         type: Date,
         default: Date.now
@@ -100,6 +104,10 @@ const userSchema = new mongoose.Schema({
         default: 0
     },
     wordsLearnedToday: {
+        type: Number,
+        default: 0
+    },
+    grammarQuestionsToday: {
         type: Number,
         default: 0
     },
