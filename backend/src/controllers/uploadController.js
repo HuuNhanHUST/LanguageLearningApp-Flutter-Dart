@@ -1,4 +1,7 @@
 // Upload controller
+const fs = require('fs/promises');
+const path = require('path');
+
 const uploadAudio = async (req, res) => {
   try {
     // Kiểm tra xem file đã được upload chưa
@@ -22,6 +25,11 @@ const uploadAudio = async (req, res) => {
       'audio/aac',
     ];
     if (!allowedMimeTypes.includes(req.file.mimetype)) {
+      // Xóa file không hợp lệ
+      await fs.unlink(req.file.path).catch(err => 
+        console.error('Failed to delete invalid file:', err)
+      );
+      
       return res.status(400).json({
         success: false,
         message: 'Loại file không được hỗ trợ. Chỉ chấp nhận: mp3, wav, ogg, m4a',
@@ -31,6 +39,11 @@ const uploadAudio = async (req, res) => {
     // Kiểm tra kích thước file (tối đa 10MB)
     const maxFileSize = 15 * 1024 * 1024; // 15MB
     if (req.file.size > maxFileSize) {
+      // Xóa file quá lớn
+      await fs.unlink(req.file.path).catch(err => 
+        console.error('Failed to delete oversized file:', err)
+      );
+      
       return res.status(400).json({
         success: false,
         message: 'Kích thước file vượt quá giới hạn (10MB)',
@@ -55,6 +68,14 @@ const uploadAudio = async (req, res) => {
     });
   } catch (error) {
     console.error('Error uploading audio:', error);
+    
+    // Xóa file nếu có lỗi xảy ra
+    if (req.file?.path) {
+      await fs.unlink(req.file.path).catch(err => 
+        console.error('Failed to delete file after error:', err)
+      );
+    }
+    
     res.status(500).json({
       success: false,
       message: 'Lỗi khi upload file audio',

@@ -207,7 +207,10 @@ userSchema.virtual('fullName').get(function() {
     return `${this.firstName} ${this.lastName}`;
 });
 
-// Indexes for performance (email and username already have unique: true)
+// Indexes for performance optimization
+// Note: email, username, facebookId, googleId already have unique: true in schema
+// So we only need to add additional indexes here
+// Learning languages index
 userSchema.index({ 'learningLanguages.language': 1 });
 // Index for leaderboard queries (DESC order for top scores)
 userSchema.index({ xp: -1 });
@@ -262,6 +265,11 @@ userSchema.methods.generateRefreshToken = function() {
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_REFRESH_EXPIRE || '30d' }
     );
+    
+    // Initialize refreshTokens array if it doesn't exist
+    if (!this.refreshTokens) {
+        this.refreshTokens = [];
+    }
     
     // Store refresh token in database
     this.refreshTokens.push({ token: refreshToken });
