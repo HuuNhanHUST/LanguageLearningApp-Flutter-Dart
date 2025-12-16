@@ -80,6 +80,8 @@ exports.register = async (req, res) => {
  * @access  Public
  */
 exports.login = async (req, res) => {
+    const loginStartTime = Date.now(); // Performance tracking
+    
     try {
         // Validate input
         const errors = validationResult(req);
@@ -94,7 +96,16 @@ exports.login = async (req, res) => {
         const { email, password } = req.body;
         
         // Find user (include password for comparison)
-        const user = await User.findOne({ email }).select('+password');
+        // Optimized: Only select necessary fields to reduce data transfer
+        const queryStartTime = Date.now();
+        const user = await User.findOne({ email })
+            .select('+password loginAttempts lockUntil isActive refreshTokens')
+            .lean(false); // Need mongoose document for methods
+        
+        const queryDuration = Date.now() - queryStartTime;
+        if (queryDuration > 200) {
+            console.warn(`⚠️ Slow login query for email: ${email} - ${queryDuration}ms`);
+        }
         
         if (!user) {
             return res.status(401).json({
@@ -146,8 +157,13 @@ exports.login = async (req, res) => {
         const refreshToken = user.generateRefreshToken();
         await user.save();
         
-        // Log user stats for debugging
-        console.log(`✅ Login successful: ${user.username} (XP: ${user.xp}, Level: ${user.level}, Total Words: ${user.totalWordsLearned})`);
+        // Log user stats and performance metrics
+        const loginDuration = Date.now() - loginStartTime;
+        console.log(`✅ Login successful: ${user.username} (XP: ${user.xp}, Level: ${user.level}) - Duration: ${loginDuration}ms`);
+        
+        if (loginDuration > 500) {
+            console.warn(`⚠️ Slow login response: ${loginDuration}ms for user ${user.username}`);
+        }
         
         res.status(200).json({
             success: true,
