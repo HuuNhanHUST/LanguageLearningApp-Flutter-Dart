@@ -280,6 +280,11 @@ class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
         'ten': 'Chỉnh sửa hồ sơ',
         'mau': const Color(0xFF6C63FF),
       },
+      {
+        'icon': Icons.leaderboard,
+        'ten': 'Bảng xếp hạng',
+        'mau': const Color(0xFFFFB300),
+      },
       {'icon': Icons.lock, 'ten': 'Bảo mật', 'mau': const Color(0xFFE91E63)},
       {'icon': Icons.help, 'ten': 'Trợ giúp', 'mau': const Color(0xFF00BCD4)},
       {
@@ -321,6 +326,8 @@ class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
                     if (mounted) {
                       setState(() {});
                     }
+                  } else if (tuyChon['ten'] == 'Bảng xếp hạng') {
+                    context.push('/leaderboard');
                   } else if (tuyChon['ten'] == 'Bảo mật') {
                     Navigator.push(
                       context,
@@ -391,7 +398,9 @@ class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
             const Text('Sắp ra mắt'),
           ],
         ),
-        content: Text('Tính năng "$feature" đang được phát triển và sẽ sớm có mặt!'),
+        content: Text(
+          'Tính năng "$feature" đang được phát triển và sẽ sớm có mặt!',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
