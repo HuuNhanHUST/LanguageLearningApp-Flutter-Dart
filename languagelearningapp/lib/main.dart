@@ -8,6 +8,7 @@ import 'features/auth/screens/register_screen.dart';
 import 'features/auth/screens/splash_screen.dart';
 import 'features/home/screens/man_hinh_chinh.dart';
 import 'features/home/screens/profile_edit_screen.dart';
+import 'features/leaderboard/screens/leaderboard_screen.dart';
 import 'features/words/providers/word_provider.dart';
 import 'features/words/screens/vocabulary_list_screen.dart';
 import 'screens/audio_recorder_screen.dart';
@@ -27,9 +28,7 @@ class MyApp extends StatelessWidget {
         provider.ChangeNotifierProvider(
           create: (_) => AuthProvider()..initialize(),
         ),
-        provider.ChangeNotifierProvider(
-          create: (_) => WordProvider(),
-        ),
+        provider.ChangeNotifierProvider(create: (_) => WordProvider()),
       ],
       child: provider.Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
@@ -132,6 +131,10 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: '/vocabulary',
           builder: (context, state) => const VocabularyListScreen(),
+        ),
+        GoRoute(
+          path: '/leaderboard',
+          builder: (context, state) => const LeaderboardScreen(),
         ),
       ],
     );
@@ -261,7 +264,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 foregroundColor: Colors.white,
               ),
             ),
-
           ],
         ),
       ),
