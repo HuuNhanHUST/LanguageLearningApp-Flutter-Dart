@@ -14,12 +14,13 @@ class LearningService {
 
   /// Đánh dấu từ là đã học và nhận XP
   /// POST /api/learning/word-learned
-  /// Body: { wordId }
+  /// Body: { wordId, lessonType }
   Future<Map<String, dynamic>> markWordLearned(
     String wordId, {
     int score = 100,
     String difficulty = 'medium',
     String activityType = 'lesson',
+    String lessonType = 'pronunciation', // flashcard or pronunciation
   }) async {
     final token = await _authService.getAccessToken();
     if (token == null) {
@@ -33,6 +34,7 @@ class LearningService {
             headers: ApiConstants.getHeaders(token: token),
             body: jsonEncode({
               'wordId': wordId,
+              'lessonType': lessonType,
             }),
           )
           .timeout(
