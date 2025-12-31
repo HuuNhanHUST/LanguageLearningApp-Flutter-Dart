@@ -82,9 +82,12 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
 
       final learningState = ref.read(learningProvider);
 
-      // Sử dụng API mới: getDailyLessonWords
-      // API này trả về từ còn lại trong ngày, đã loại bỏ từ đã học
-      final dailyWords = await _pronunciationService.getDailyLessonWords();
+      // Lấy 10 từ phát âm theo pronunciation limit
+      final dailyWords = await _pronunciationService.getPronunciationWords(
+        limit: learningState.pronunciationRemaining > 0
+          ? learningState.pronunciationRemaining
+          : 10,
+      );
 
       if (mounted) {
         setState(() {
@@ -95,12 +98,12 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
         // Show info based on words available
         if (dailyWords.isEmpty) {
           // Check if reached daily limit or learned all words
-          final remaining = learningState.remaining;
-          if (remaining == 0 || !learningState.canLearnMore) {
+          final remaining = learningState.pronunciationRemaining;
+          if (remaining == 0 || !learningState.canLearnPronunciation) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
-                  '🎉 Bạn đã hoàn thành 30 từ hôm nay! Quay lại vào ngày mai nhé!',
+                  '🎉 Bạn đã hoàn thành 10 từ phát âm hôm nay! Quay lại vào ngày mai nhé!',
                 ),
                 backgroundColor: Colors.orange,
                 duration: Duration(seconds: 3),
@@ -121,11 +124,11 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
           }
         } else {
           // Show thông báo số từ còn lại
-          final remainingToday = learningState.remaining;
+          final remainingToday = learningState.pronunciationRemaining;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                '📚 Hôm nay bạn còn ${dailyWords.length} từ để học! (${learningState.wordsLearnedToday}/30)',
+                '📚 Còn $remainingToday/10 từ phát âm hôm nay!',
               ),
               backgroundColor: Colors.blue,
               duration: const Duration(seconds: 2),
@@ -291,12 +294,35 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
 
   /// Chuyển sang bài tập tiếp theo
   Future<void> _chuyenBaiTapTiepTheo() async {
+    // Kiểm tra điểm số trước khi cho phép next
+    if (_pronunciationResult == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Bạn cần ghi âm và nhận điểm trước khi tiếp tục!'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    if (_pronunciationResult!.score < 50) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Điểm của bạn là ${_pronunciationResult!.score}/100. Cần đạt tối thiểu 50 điểm để tiếp tục!'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     // Mark word learned and earn XP
     if (_buocHienTai < _cacBaiTap.length) {
       final currentWord = _cacBaiTap[_buocHienTai];
       final result = await ref
           .read(learningProvider.notifier)
-          .markWordLearned(currentWord.id, activityType: 'pronunciation');
+          .markWordLearned(currentWord.id, activityType: 'pronunciation', lessonType: 'pronunciation');
 
       if (result['success'] == true && mounted) {
         // Show snackbar for XP gained
@@ -350,7 +376,7 @@ class _ManHinhBaiHocPhatAmState extends ConsumerState<ManHinhBaiHocPhatAm> {
         _buocHienTai++;
         _isPlaying = false;
         _previousAudioPath = null; // Reset để box xanh biến mất
-        _pronunciationResult = null; // Reset kết quả chấm điểm
+        _pronunciationResult = null; // Reset kết quả chấm điểm cho từ tiếp theo
         _isScoring = false; // Reset trạng thái chấm điểm
       });
     } else {

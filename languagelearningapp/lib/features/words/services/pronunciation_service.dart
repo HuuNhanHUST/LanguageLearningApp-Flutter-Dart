@@ -60,6 +60,66 @@ class PronunciationService {
     }
   }
 
+  /// Lấy từ cho bài học FLASHCARD - 20 từ/ngày
+  Future<List<WordModel>> getFlashcardWords({int limit = 20}) async {
+    final token = await _authService.getAccessToken();
+    if (token == null) {
+      throw Exception('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+    }
+
+    try {
+      final response = await _client.get(
+        Uri.parse('${ApiConstants.getWords}/daily-lesson?lessonType=flashcard&limit=$limit'),
+        headers: ApiConstants.getHeaders(token: token),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final wordsList = data['data']?['words'] as List?;
+
+        if (wordsList != null && wordsList.isNotEmpty) {
+          return wordsList
+              .map((item) => WordModel.fromJson(item as Map<String, dynamic>))
+              .toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error getting flashcard words: $e');
+      throw Exception('Lỗi tải flashcard: $e');
+    }
+  }
+
+  /// Lấy từ cho bài học PHÁT ÂM - 10 từ/ngày
+  Future<List<WordModel>> getPronunciationWords({int limit = 10}) async {
+    final token = await _authService.getAccessToken();
+    if (token == null) {
+      throw Exception('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+    }
+
+    try {
+      final response = await _client.get(
+        Uri.parse('${ApiConstants.getWords}/daily-lesson?lessonType=pronunciation&limit=$limit'),
+        headers: ApiConstants.getHeaders(token: token),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final wordsList = data['data']?['words'] as List?;
+
+        if (wordsList != null && wordsList.isNotEmpty) {
+          return wordsList
+              .map((item) => WordModel.fromJson(item as Map<String, dynamic>))
+              .toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error getting pronunciation words: $e');
+      throw Exception('Lỗi tải bài phát âm: $e');
+    }
+  }
+
   /// Lấy danh sách từ vựng cho bài học phát âm từ database
   /// Sử dụng API GET /words để lấy danh sách từ của user
   Future<List<WordModel>> getWordsForPronunciation({

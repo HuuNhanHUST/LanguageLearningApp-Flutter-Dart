@@ -107,6 +107,14 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    flashcardLearnedToday: {
+        type: Number,
+        default: 0
+    },
+    pronunciationLearnedToday: {
+        type: Number,
+        default: 0
+    },
     grammarQuestionsToday: {
         type: Number,
         default: 0

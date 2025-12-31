@@ -7,6 +7,12 @@ class LearningState {
   final int wordsLearnedToday;
   final int remaining;
   final int dailyLimit;
+  final int flashcardLearnedToday;
+  final int flashcardRemaining;
+  final int flashcardLimit;
+  final int pronunciationLearnedToday;
+  final int pronunciationRemaining;
+  final int pronunciationLimit;
   final int grammarQuestionsToday;
   final int grammarRemaining;
   final int grammarDailyLimit;
@@ -25,6 +31,12 @@ class LearningState {
     this.wordsLearnedToday = 0,
     this.remaining = 30,
     this.dailyLimit = 30,
+    this.flashcardLearnedToday = 0,
+    this.flashcardRemaining = 20,
+    this.flashcardLimit = 20,
+    this.pronunciationLearnedToday = 0,
+    this.pronunciationRemaining = 10,
+    this.pronunciationLimit = 10,
     this.grammarQuestionsToday = 0,
     this.grammarRemaining = 10,
     this.grammarDailyLimit = 10,
@@ -44,6 +56,12 @@ class LearningState {
     int? wordsLearnedToday,
     int? remaining,
     int? dailyLimit,
+    int? flashcardLearnedToday,
+    int? flashcardRemaining,
+    int? flashcardLimit,
+    int? pronunciationLearnedToday,
+    int? pronunciationRemaining,
+    int? pronunciationLimit,
     int? grammarQuestionsToday,
     int? grammarRemaining,
     int? grammarDailyLimit,
@@ -62,6 +80,12 @@ class LearningState {
       wordsLearnedToday: wordsLearnedToday ?? this.wordsLearnedToday,
       remaining: remaining ?? this.remaining,
       dailyLimit: dailyLimit ?? this.dailyLimit,
+      flashcardLearnedToday: flashcardLearnedToday ?? this.flashcardLearnedToday,
+      flashcardRemaining: flashcardRemaining ?? this.flashcardRemaining,
+      flashcardLimit: flashcardLimit ?? this.flashcardLimit,
+      pronunciationLearnedToday: pronunciationLearnedToday ?? this.pronunciationLearnedToday,
+      pronunciationRemaining: pronunciationRemaining ?? this.pronunciationRemaining,
+      pronunciationLimit: pronunciationLimit ?? this.pronunciationLimit,
       grammarQuestionsToday: grammarQuestionsToday ?? this.grammarQuestionsToday,
       grammarRemaining: grammarRemaining ?? this.grammarRemaining,
       grammarDailyLimit: grammarDailyLimit ?? this.grammarDailyLimit,
@@ -85,6 +109,8 @@ class LearningState {
 
   /// Check xem còn học được không
   bool get canLearnMore => remaining > 0;
+  bool get canLearnFlashcard => flashcardRemaining > 0;
+  bool get canLearnPronunciation => pronunciationRemaining > 0;
   bool get canLearnGrammar => grammarRemaining > 0;
 
   /// Tiến độ XP trong level hiện tại (0..1)
@@ -129,6 +155,12 @@ class LearningNotifier extends StateNotifier<LearningState> {
         wordsLearnedToday: progress['wordsLearnedToday'] as int,
         remaining: progress['remaining'] as int,
         dailyLimit: progress['dailyLimit'] as int,
+        flashcardLearnedToday: progress['flashcardLearnedToday'] as int? ?? 0,
+        flashcardRemaining: progress['flashcardRemaining'] as int? ?? 20,
+        flashcardLimit: progress['flashcardLimit'] as int? ?? 20,
+        pronunciationLearnedToday: progress['pronunciationLearnedToday'] as int? ?? 0,
+        pronunciationRemaining: progress['pronunciationRemaining'] as int? ?? 10,
+        pronunciationLimit: progress['pronunciationLimit'] as int? ?? 10,
         grammarQuestionsToday: progress['grammarQuestionsToday'] as int? ?? 0,
         grammarRemaining: progress['grammarRemaining'] as int? ?? 10,
         grammarDailyLimit: progress['grammarDailyLimit'] as int? ?? 10,
@@ -158,11 +190,18 @@ class LearningNotifier extends StateNotifier<LearningState> {
     int score = 100,
     String difficulty = 'medium',
     String activityType = 'lesson',
+    String lessonType = 'pronunciation', // flashcard or pronunciation
   }) async {
-    if (!state.canLearnMore) {
+    // Check limit based on lessonType
+    if (lessonType == 'flashcard' && !state.canLearnFlashcard) {
       return {
         'success': false,
-        'message': 'Bạn đã đạt giới hạn 30 từ/ngày rồi! 🎯',
+        'message': 'Đã hoàn thành 20 flashcards hôm nay! 🎯',
+      };
+    } else if (lessonType == 'pronunciation' && !state.canLearnPronunciation) {
+      return {
+        'success': false,
+        'message': 'Đã hoàn thành 10 từ phát âm hôm nay! 🎯',
       };
     }
 
@@ -177,6 +216,7 @@ class LearningNotifier extends StateNotifier<LearningState> {
         score: score,
         difficulty: difficulty,
         activityType: activityType,
+        lessonType: lessonType,
       );
 
       // Từ đã học rồi - không cần update state
@@ -216,6 +256,11 @@ class LearningNotifier extends StateNotifier<LearningState> {
   /// Check xem một từ đã được học chưa
   bool isWordLearned(String wordId) {
     return state.learnedWordIds.contains(wordId);
+  }
+
+  /// Thêm XP (wrapper cho grammar)
+  Future<Map<String, dynamic>> addXP(int xpAmount) async {
+    return addGrammarXp(xpAmount: xpAmount);
   }
 
   /// Thêm XP cho grammar practice (không đánh dấu từ là đã học)

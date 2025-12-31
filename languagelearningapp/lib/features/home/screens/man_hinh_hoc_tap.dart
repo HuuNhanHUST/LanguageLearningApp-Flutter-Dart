@@ -5,6 +5,8 @@ import 'package:provider/provider.dart' as provider;
 
 import 'man_hinh_bai_hoc_phat_am.dart';
 import 'man_hinh_bai_hoc_ngu_phap.dart';
+import 'man_hinh_flashcard.dart';
+import 'man_hinh_bai_hoc_thi.dart';
 import '../../../screens/text_scan_screen.dart';
 import '../../../widgets/cached_avatar.dart';
 import '../../auth/models/user_model.dart';
@@ -409,10 +411,10 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
       },
       {
         'ten': 'Bài học 3',
-        'chuDe': 'Từ vựng hàng ngày',
+        'chuDe': 'Flashcard từ vựng',
         'tienDo': 0.3,
         'mau': const Color(0xFFFF9800),
-        'loai': 'coming-soon',
+        'loai': 'flashcard',
       },
     ];
 
@@ -497,6 +499,11 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
                       tenBaiHoc: baiHoc['ten'] as String,
                       chuDe: baiHoc['chuDe'] as String,
                     );
+                  } else if (loai == 'flashcard') {
+                    manHinh = ManHinhFlashcard(
+                      tenBaiHoc: baiHoc['ten'] as String,
+                      chuDe: baiHoc['chuDe'] as String,
+                    );
                   }
 
                   if (manHinh != null) {
@@ -541,9 +548,23 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
       },
       {
         'ten': 'Ngữ pháp',
-        'soLuong': '18 bài',
+        'soLuong': '12 thì',
         'icon': Icons.book,
         'mau': const Color(0xFF4CAF50),
+        'subItems': [
+          {'ten': 'Present Simple', 'vi': 'Hiện tại đơn'},
+          {'ten': 'Present Continuous', 'vi': 'Hiện tại tiếp diễn'},
+          {'ten': 'Present Perfect', 'vi': 'Hiện tại hoàn thành'},
+          {'ten': 'Present Perfect Continuous', 'vi': 'Hiện tại hoàn thành tiếp diễn'},
+          {'ten': 'Past Simple', 'vi': 'Quá khứ đơn'},
+          {'ten': 'Past Continuous', 'vi': 'Quá khứ tiếp diễn'},
+          {'ten': 'Past Perfect', 'vi': 'Quá khứ hoàn thành'},
+          {'ten': 'Past Perfect Continuous', 'vi': 'Quá khứ hoàn thành tiếp diễn'},
+          {'ten': 'Future Simple', 'vi': 'Tương lai đơn'},
+          {'ten': 'Future Continuous', 'vi': 'Tương lai tiếp diễn'},
+          {'ten': 'Future Perfect', 'vi': 'Tương lai hoàn thành'},
+          {'ten': 'Future Perfect Continuous', 'vi': 'Tương lai hoàn thành tiếp diễn'},
+        ],
       },
       {
         'ten': 'Từ vựng',
@@ -603,6 +624,10 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
               );
             }
             // Các chủ đề khác hiển thị thông báo
+            else if (chuDe['ten'] == 'Ngữ pháp') {
+              // Hiển thị bottom sheet với 12 thì
+              _showGrammarTensesBottomSheet(context, chuDe);
+            }
             else {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -663,6 +688,147 @@ class _ManHinhHocTapState extends ConsumerState<ManHinhHocTap> {
           ),
         );
       },
+    );
+  }
+
+  /// Hiển thị bottom sheet với 12 thì ngữ pháp
+  void _showGrammarTensesBottomSheet(BuildContext context, Map<String, dynamic> chuDe) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: const BoxDecoration(
+          color: Color(0xFF2D1B69),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(25),
+            topRight: Radius.circular(25),
+          ),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(25),
+                  topRight: Radius.circular(25),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4CAF50),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.book, color: Colors.white, size: 30),
+                  ),
+                  const SizedBox(width: 15),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ngữ pháp - 12 Thì',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          'Chọn thì để học',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            // List 12 thì
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(20),
+                itemCount: (chuDe['subItems'] as List).length,
+                itemBuilder: (context, index) {
+                  final tense = (chuDe['subItems'] as List)[index] as Map<String, dynamic>;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      leading: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4CAF50),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      title: Text(
+                        tense['ten'] as String,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        tense['vi'] as String,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: 14,
+                        ),
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 20),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ManHinhBaiHocThi(
+                              tenseName: tense['ten'] as String,
+                              tenseNameVi: tense['vi'] as String,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

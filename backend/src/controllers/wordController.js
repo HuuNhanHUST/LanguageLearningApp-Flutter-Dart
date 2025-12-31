@@ -782,9 +782,10 @@ exports.getDailyLessonWords = async (req, res) => {
   try {
     const userId = req.user._id;
     const User = require('../models/User');
+    const { lessonType, limit } = req.query; // NEW: Get lessonType and limit from query
     
     // Get user to check learned words, level, and daily progress
-    const user = await User.findById(userId).select('learnedWords lastLearningDate level wordsLearnedToday');
+    const user = await User.findById(userId).select('learnedWords lastLearningDate level wordsLearnedToday flashcardLearnedToday pronunciationLearnedToday');
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -792,8 +793,19 @@ exports.getDailyLessonWords = async (req, res) => {
       });
     }
 
-    // Check daily limit (30 words/day)
-    const DAILY_LIMIT = 30;
+    // Determine limits based on lessonType
+    let DAILY_LIMIT = 30;
+    let todayLearnedCount = user.wordsLearnedToday || 0;
+    
+    if (lessonType === 'flashcard') {
+      DAILY_LIMIT = 20;
+      todayLearnedCount = user.flashcardLearnedToday || 0;
+    } else if (lessonType === 'pronunciation') {
+      DAILY_LIMIT = 10;
+      todayLearnedCount = user.pronunciationLearnedToday || 0;
+    }
+    
+    // Check daily limit
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -805,27 +817,32 @@ exports.getDailyLessonWords = async (req, res) => {
     }
     
     const isNewDay = !lastLearningDateNormalized || lastLearningDateNormalized.getTime() < today.getTime();
-    const wordsLearnedToday = isNewDay ? 0 : (user.wordsLearnedToday || 0);
+    
+    if (isNewDay) {
+      todayLearnedCount = 0;
+    }
     
     // If already reached daily limit, return empty
-    if (wordsLearnedToday >= DAILY_LIMIT) {
-      console.log(`🛑 Daily limit reached: ${wordsLearnedToday}/${DAILY_LIMIT} for user ${user.username || userId}`);
+    if (todayLearnedCount >= DAILY_LIMIT) {
+      const lessonName = lessonType === 'flashcard' ? 'flashcard' : lessonType === 'pronunciation' ? 'từ phát âm' : 'từ';
+      console.log(`🛑 Daily limit reached: ${todayLearnedCount}/${DAILY_LIMIT} ${lessonType || 'total'} for user ${user.username || userId}`);
       return res.status(200).json({
         success: true,
-        message: '🎉 Bạn đã hoàn thành 30 từ hôm nay! Quay lại vào ngày mai nhé!',
+        message: `🎉 Bạn đã hoàn thành ${DAILY_LIMIT} ${lessonName} hôm nay! Quay lại vào ngày mai nhé!`,
         data: {
           words: [],
           total: 0,
           remaining: 0,
           dailyLimitReached: true,
-          wordsLearnedToday: wordsLearnedToday,
+          wordsLearnedToday: todayLearnedCount,
           dailyLimit: DAILY_LIMIT,
+          lessonType: lessonType,
         },
       });
     }
     
     // Calculate how many words can still be learned today
-    const remainingForToday = DAILY_LIMIT - wordsLearnedToday;
+    const remainingForToday = DAILY_LIMIT - todayLearnedCount;
 
     // Get list of learned word IDs
     const learnedWordIds = user.learnedWords ? user.learnedWords.map(item => item.wordId) : [];
@@ -899,9 +916,9 @@ exports.getDailyLessonWords = async (req, res) => {
       [shuffledWords[i], shuffledWords[j]] = [shuffledWords[j], shuffledWords[i]];
     }
     
-    // IMPORTANT: Only return words that are in the FIRST 30 of today's shuffle
-    // This ensures users can't see "new" words by refreshing
-    const todayPool = shuffledWords.slice(0, 30);
+    // IMPORTANT: Only return words that are in the FIRST pool of today's shuffle
+    // Pool size matches the lesson type limit
+    const todayPool = shuffledWords.slice(0, DAILY_LIMIT);
     
     // Filter out words already learned today
     const todayPoolFiltered = todayPool.filter(word => 
@@ -912,7 +929,7 @@ exports.getDailyLessonWords = async (req, res) => {
     const wordsToReturn = Math.min(todayPoolFiltered.length, remainingForToday);
     const dailyWords = todayPoolFiltered.slice(0, wordsToReturn);
     
-    console.log(`📚 Daily Lesson: ${dailyWords.length}/${remainingForToday} words remaining (Level ${userLevel}) for user ${user.username || userId} (Day #${dayNumber}, Pool: ${todayPool.length}, Filtered: ${todayPoolFiltered.length})`);
+    console.log(`📚 Daily Lesson (${lessonType || 'all'}): ${dailyWords.length}/${remainingForToday} words remaining (Level ${userLevel}) for user ${user.username || userId} (Day #${dayNumber}, Pool: ${todayPool.length}, Filtered: ${todayPoolFiltered.length})`);
     
     res.status(200).json({
       success: true,
@@ -921,11 +938,12 @@ exports.getDailyLessonWords = async (req, res) => {
         words: dailyWords,
         total: dailyWords.length,
         remaining: unlearnedWords.length,
-        wordsLearnedToday: wordsLearnedToday,
+        wordsLearnedToday: todayLearnedCount,
         dailyLimit: DAILY_LIMIT,
         remainingForToday: remainingForToday,
         dayNumber: dayNumber,
         userLevel: userLevel,
+        lessonType: lessonType,
       },
     });
 

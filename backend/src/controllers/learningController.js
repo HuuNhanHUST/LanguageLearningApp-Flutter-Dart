@@ -62,6 +62,8 @@ exports.markWordLearned = async (req, res) => {
     if (isNewDay) {
       // Reset daily count for new day
       user.wordsLearnedToday = 0;
+      user.flashcardLearnedToday = 0;
+      user.pronunciationLearnedToday = 0;
       
       // Update streak BEFORE setting new lastLearningDate
       if (lastLearningDateNormalized) {
@@ -100,17 +102,33 @@ exports.markWordLearned = async (req, res) => {
       user.lastLearningDate = today;
     }
 
-    // Check if reached daily limit (30 words/day)
-    const DAILY_LIMIT = 30;
-    if (user.wordsLearnedToday >= DAILY_LIMIT) {
-      return res.status(429).json({
-        success: false,
-        message: 'Daily word limit reached (30 words/day)',
-        data: {
-          wordsLearnedToday: user.wordsLearnedToday,
-          remaining: 0,
-        },
-      });
+    // Check daily limit based on lessonType
+    const FLASHCARD_LIMIT = 20;
+    const PRONUNCIATION_LIMIT = 10;
+    const lessonType = req.body.lessonType || 'pronunciation'; // default pronunciation for backward compatibility
+    
+    if (lessonType === 'flashcard') {
+      if (user.flashcardLearnedToday >= FLASHCARD_LIMIT) {
+        return res.status(429).json({
+          success: false,
+          message: 'Đã hoàn thành 20 flashcards hôm nay!',
+          data: {
+            flashcardLearnedToday: user.flashcardLearnedToday,
+            flashcardRemaining: 0,
+          },
+        });
+      }
+    } else if (lessonType === 'pronunciation') {
+      if (user.pronunciationLearnedToday >= PRONUNCIATION_LIMIT) {
+        return res.status(429).json({
+          success: false,
+          message: 'Đã hoàn thành 10 từ phát âm hôm nay!',
+          data: {
+            pronunciationLearnedToday: user.pronunciationLearnedToday,
+            pronunciationRemaining: 0,
+          },
+        });
+      }
     }
 
     // Award XP (5 XP per word)
@@ -129,9 +147,15 @@ exports.markWordLearned = async (req, res) => {
       learnedAt: new Date(),
     });
 
-    // Update counters
+    // Update counters based on lessonType
     user.totalWordsLearned = (user.totalWordsLearned || 0) + 1;
     user.wordsLearnedToday = (user.wordsLearnedToday || 0) + 1;
+    
+    if (lessonType === 'flashcard') {
+      user.flashcardLearnedToday = (user.flashcardLearnedToday || 0) + 1;
+    } else if (lessonType === 'pronunciation') {
+      user.pronunciationLearnedToday = (user.pronunciationLearnedToday || 0) + 1;
+    }
 
     await user.save();
     
@@ -147,7 +171,10 @@ exports.markWordLearned = async (req, res) => {
     }
 
     // Calculate remaining words for today
-    const remaining = DAILY_LIMIT - user.wordsLearnedToday;
+    const TOTAL_LIMIT = 30;
+    const remaining = TOTAL_LIMIT - user.wordsLearnedToday;
+    const flashcardRemaining = FLASHCARD_LIMIT - (user.flashcardLearnedToday || 0);
+    const pronunciationRemaining = PRONUNCIATION_LIMIT - (user.pronunciationLearnedToday || 0);
 
     res.status(200).json({
       success: true,
@@ -162,8 +189,12 @@ exports.markWordLearned = async (req, res) => {
         oldLevel: oldLevel,
         newLevel: newLevel,
         wordsLearnedToday: user.wordsLearnedToday,
+        flashcardLearnedToday: user.flashcardLearnedToday || 0,
+        pronunciationLearnedToday: user.pronunciationLearnedToday || 0,
         totalWordsLearned: user.totalWordsLearned,
         remaining: remaining,
+        flashcardRemaining: flashcardRemaining,
+        pronunciationRemaining: pronunciationRemaining,
         streak: user.streak,
         badges: badgeResult
       },
@@ -287,7 +318,7 @@ exports.getProgress = async (req, res) => {
     const userId = req.user._id;
 
     const user = await User.findById(userId).select(
-      'xp level totalWordsLearned wordsLearnedToday grammarQuestionsToday lastLearningDate streak learnedWords'
+      'xp level totalWordsLearned wordsLearnedToday flashcardLearnedToday pronunciationLearnedToday grammarQuestionsToday lastLearningDate streak learnedWords'
     );
 
     if (!user) {
@@ -311,11 +342,15 @@ exports.getProgress = async (req, res) => {
     const isNewDay = !lastLearningDateNormalized || lastLearningDateNormalized.getTime() < today.getTime();
 
     let wordsLearnedToday = user.wordsLearnedToday || 0;
+    let flashcardLearnedToday = user.flashcardLearnedToday || 0;
+    let pronunciationLearnedToday = user.pronunciationLearnedToday || 0;
     let grammarQuestionsToday = user.grammarQuestionsToday || 0;
     let streak = user.streak || 0;
 
     if (isNewDay) {
       wordsLearnedToday = 0;
+      flashcardLearnedToday = 0;
+      pronunciationLearnedToday = 0;
       grammarQuestionsToday = 0;
       
       // Kiểm tra nếu bỏ lỡ nhiều ngày thì streak = 0 (chưa học hôm nay)
@@ -329,12 +364,16 @@ exports.getProgress = async (req, res) => {
     }
 
     const DAILY_LIMIT = 30;
+    const FLASHCARD_LIMIT = 20;
+    const PRONUNCIATION_LIMIT = 10;
     const GRAMMAR_DAILY_LIMIT = 10;
     const remaining = Math.max(0, DAILY_LIMIT - wordsLearnedToday);
+    const flashcardRemaining = Math.max(0, FLASHCARD_LIMIT - flashcardLearnedToday);
+    const pronunciationRemaining = Math.max(0, PRONUNCIATION_LIMIT - pronunciationLearnedToday);
     const grammarRemaining = Math.max(0, GRAMMAR_DAILY_LIMIT - grammarQuestionsToday);
     const xpForNextLevel = getXPForNextLevel(user.level || 1);
 
-    console.log(`📊 Progress requested: User: ${user.username}, XP: ${user.xp}, Level: ${user.level}, Words: ${wordsLearnedToday}/${DAILY_LIMIT}, Grammar: ${grammarQuestionsToday}/${GRAMMAR_DAILY_LIMIT}`);
+    console.log(`📊 Progress: User: ${user.username}, Total: ${wordsLearnedToday}/30, Flashcard: ${flashcardLearnedToday}/20, Pronunciation: ${pronunciationLearnedToday}/10, Grammar: ${grammarQuestionsToday}/10`);
 
     res.status(200).json({
       success: true,
@@ -345,6 +384,12 @@ exports.getProgress = async (req, res) => {
         wordsLearnedToday: wordsLearnedToday,
         remaining: remaining,
         dailyLimit: DAILY_LIMIT,
+        flashcardLearnedToday: flashcardLearnedToday,
+        flashcardRemaining: flashcardRemaining,
+        flashcardLimit: FLASHCARD_LIMIT,
+        pronunciationLearnedToday: pronunciationLearnedToday,
+        pronunciationRemaining: pronunciationRemaining,
+        pronunciationLimit: PRONUNCIATION_LIMIT,
         grammarQuestionsToday: grammarQuestionsToday,
         grammarRemaining: grammarRemaining,
         grammarDailyLimit: GRAMMAR_DAILY_LIMIT,
