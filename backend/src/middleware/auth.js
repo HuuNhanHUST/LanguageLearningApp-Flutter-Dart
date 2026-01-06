@@ -142,4 +142,72 @@ const authorize = (...roles) => {
     };
 };
 
-module.exports = { auth, optionalAuth, authorize };
+/**
+ * Middleware để kiểm tra quyền admin
+ */
+const isAdmin = (req, res, next) => {
+    console.log('🔐 isAdmin middleware - User:', req.user?.username, 'Role:', req.user?.role);
+    
+    if (!req.user) {
+        console.log('❌ No user in request');
+        return res.status(401).json({
+            success: false,
+            message: 'Authentication required.'
+        });
+    }
+    
+    if (req.user.role !== 'admin') {
+        console.log(`❌ Access denied: ${req.user.username} has role '${req.user.role}', needs 'admin'`);
+        return res.status(403).json({
+            success: false,
+            message: 'Admin access required.'
+        });
+    }
+    
+    console.log('✅ Admin access granted');
+    next();
+};
+
+/**
+ * Middleware để kiểm tra quyền teacher hoặc admin
+ */
+const isTeacherOrAdmin = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({
+            success: false,
+            message: 'Authentication required.'
+        });
+    }
+    
+    if (req.user.role !== 'teacher' && req.user.role !== 'admin') {
+        return res.status(403).json({
+            success: false,
+            message: 'Teacher or admin access required.'
+        });
+    }
+    
+    next();
+};
+
+/**
+ * Middleware để kiểm tra quyền teacher
+ */
+const isTeacher = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({
+            success: false,
+            message: 'Authentication required.'
+        });
+    }
+    
+    if (req.user.role !== 'teacher') {
+        return res.status(403).json({
+            success: false,
+            message: 'Teacher access required.'
+        });
+    }
+    
+    next();
+};
+
+module.exports = { auth, optionalAuth, authorize, isAdmin, isTeacher, isTeacherOrAdmin };

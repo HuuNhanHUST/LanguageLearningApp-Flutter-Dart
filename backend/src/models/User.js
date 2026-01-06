@@ -181,6 +181,13 @@ const userSchema = new mongoose.Schema({
         }
     },
     
+    // Role-based Access Control
+    role: {
+        type: String,
+        enum: ['user', 'teacher', 'admin'],
+        default: 'user'
+    },
+    
     // Account Status
     isActive: {
         type: Boolean,
@@ -259,7 +266,8 @@ userSchema.methods.generateAccessToken = function() {
         { 
             id: this._id,
             email: this.email,
-            username: this.username
+            username: this.username,
+            role: this.role
         },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRE || '7d' }
@@ -329,6 +337,7 @@ userSchema.methods.getPublicProfile = function() {
         firstName: this.firstName,
         lastName: this.lastName,
         avatar: this.avatar,
+        role: this.role,
         nativeLanguage: this.nativeLanguage,
         learningLanguages: this.learningLanguages || [],
         xp: this.xp,
