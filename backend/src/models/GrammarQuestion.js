@@ -5,12 +5,12 @@ const grammarQuestionSchema = new mongoose.Schema(
     wordId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Word',
-      required: true,
+      required: false, // Optional for class questions
       index: true,
     },
     word: {
       type: String,
-      required: true,
+      required: false, // Optional for class questions
       trim: true,
     },
     question: {
@@ -48,6 +48,23 @@ const grammarQuestionSchema = new mongoose.Schema(
       enum: ['beginner', 'intermediate', 'advanced'],
       default: 'beginner',
     },
+    // Thêm trường để quản lý giáo viên tạo câu hỏi
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true
+    },
+    // Câu hỏi thuộc lớp học nào (optional - có thể là câu hỏi chung)
+    classId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Class',
+      index: true
+    },
+    // Câu hỏi có public cho tất cả không hay chỉ cho lớp cụ thể
+    isPublic: {
+      type: Boolean,
+      default: true
+    },
     source: {
       type: String,
       default: 'gemini',
@@ -83,6 +100,8 @@ const grammarQuestionSchema = new mongoose.Schema(
 
 grammarQuestionSchema.index({ wordId: 1, createdAt: -1 });
 grammarQuestionSchema.index({ targetSkill: 1, difficulty: 1 });
+grammarQuestionSchema.index({ createdBy: 1, classId: 1 });
+grammarQuestionSchema.index({ isPublic: 1 });
 
 const GrammarQuestion = mongoose.model('GrammarQuestion', grammarQuestionSchema);
 

@@ -25,6 +25,9 @@ const leaderboardRoutes = require('./src/routes/leaderboardRoutes');
 const grammarRoutes = require('./src/routes/grammarRoutes');
 const learningRoutes = require('./src/routes/learningRoutes');
 const badgeRoutes = require('./src/routes/badgeRoutes');
+const classRoutes = require('./src/routes/classRoutes');
+const assignmentRoutes = require('./src/routes/assignmentRoutes');
+const submissionRoutes = require('./src/routes/submissionRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -81,6 +84,9 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/grammar', grammarRoutes);
 app.use('/api/learning', learningRoutes);
 app.use('/api/badges', badgeRoutes);
+app.use('/api/classes', classRoutes);
+app.use('/api/assignments', assignmentRoutes);
+app.use('/api/submissions', submissionRoutes);
 // app.use('/api/auth', authRoutes); // authRoutes removed after revert
 
 // 404 Handler

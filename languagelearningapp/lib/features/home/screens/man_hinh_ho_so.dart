@@ -11,6 +11,10 @@ import '../../user/user.dart'; // Import user stats widget
 import '../../profile/screens/edit_profile_screen.dart';
 import '../../profile/screens/security_screen.dart';
 import '../../profile/screens/help_screen.dart';
+import '../../admin/screens/admin_dashboard_screen.dart';
+import '../../class/screens/teacher_dashboard_screen.dart';
+import '../../class/screens/join_class_screen.dart';
+import '../../class/screens/student_classes_screen.dart';
 
 /// Màn hình Hồ sơ người dùng
 /// Hiển thị thông tin cá nhân, cài đặt
@@ -274,7 +278,36 @@ class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
 
   /// Xây dựng danh sách cài đặt
   Widget _xayDungCaiDat(BuildContext context) {
+    // Get current user from provider
+    final user = context.watch<AuthProvider>().user;
+    
+    // Debug: Print user role
+    print('DEBUG - User role: ${user?.role}');
+    print('DEBUG - isTeacher: ${user?.isTeacher}');
+    print('DEBUG - isAdmin: ${user?.isAdmin}');
+    
     final cacTuyChon = [
+      // Admin option - only show for admin users
+      if (user?.isAdmin == true)
+        {
+          'icon': Icons.admin_panel_settings,
+          'ten': 'Quản lý hệ thống',
+          'mau': const Color(0xFF9C27B0),
+        },
+      // Teacher option - only show for teachers and admins
+      if (user?.isTeacher == true)
+        {
+          'icon': Icons.school,
+          'ten': 'Quản lý lớp học',
+          'mau': const Color(0xFF4CAF50),
+        },
+      // Join class option - only show for students (not teachers or admins)
+      if (user?.role == 'user')
+        {
+          'icon': Icons.group_add,
+          'ten': 'Tham gia lớp học',
+          'mau': const Color(0xFF2196F3),
+        },
       {
         'icon': Icons.edit,
         'ten': 'Chỉnh sửa hồ sơ',
@@ -315,6 +348,30 @@ class _ManHinhHoSoState extends ConsumerState<ManHinhHoSo> {
                 onTap: () async {
                   if (tuyChon['ten'] == 'Đăng xuất') {
                     _xuLyDangXuat(context);
+                  } else if (tuyChon['ten'] == 'Quản lý hệ thống') {
+                    // Navigate to admin dashboard
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AdminDashboardScreen(),
+                      ),
+                    );
+                  } else if (tuyChon['ten'] == 'Quản lý lớp học') {
+                    // Navigate to teacher dashboard
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TeacherDashboardScreen(),
+                      ),
+                    );
+                  } else if (tuyChon['ten'] == 'Tham gia lớp học') {
+                    // Navigate to student classes screen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const StudentClassesScreen(),
+                      ),
+                    );
                   } else if (tuyChon['ten'] == 'Chỉnh sửa hồ sơ') {
                     await Navigator.push(
                       context,

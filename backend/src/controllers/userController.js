@@ -96,10 +96,9 @@ exports.login = async (req, res) => {
         const { email, password } = req.body;
         
         // Find user (include password for comparison)
-        // Optimized: Only select necessary fields to reduce data transfer
         const queryStartTime = Date.now();
         const user = await User.findOne({ email })
-            .select('+password loginAttempts lockUntil isActive refreshTokens')
+            .select('+password') // Only need to explicitly include password (marked as select: false)
             .lean(false); // Need mongoose document for methods
         
         const queryDuration = Date.now() - queryStartTime;
@@ -891,6 +890,311 @@ exports.googleLogin = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Google login failed',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+/**
+ * @desc    Lấy danh sách tất cả users (Admin only)
+ * @route   GET /api/users/admin/all
+ * @access  Private (Admin)
+ */
+exports.getAllUsers = async (req, res) => {
+    try {
+        const { role, isActive, page = 1, limit = 20, search } = req.query;
+        
+        const filter = {};
+        if (role) filter.role = role;
+        if (isActive !== undefined) filter.isActive = isActive === 'true';
+        
+        // Search by username, email, firstName, lastName
+        if (search) {
+            filter.$or = [
+                { username: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } },
+                { firstName: { $regex: search, $options: 'i' } },
+                { lastName: { $regex: search, $options: 'i' } }
+            ];
+        }
+        
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        
+        const users = await User.find(filter)
+            .select('-password -refreshTokens')
+            .skip(skip)
+            .limit(parseInt(limit))
+            .sort({ createdAt: -1 });
+        
+        const total = await User.countDocuments(filter);
+        
+        // Map users to public profile format (converts _id to id)
+        const usersData = users.map(user => user.getPublicProfile());
+        
+        res.json({
+            success: true,
+            data: usersData,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+        
+    } catch (error) {
+        console.error('Get all users error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch users',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+/**
+ * @desc    Nâng cấp user lên teacher (Admin only)
+ * @route   PUT /api/users/admin/promote/:userId
+ * @access  Private (Admin)
+ */
+exports.promoteToTeacher = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        
+        if (user.role === 'teacher') {
+            return res.status(400).json({
+                success: false,
+                message: 'User is already a teacher'
+            });
+        }
+        
+        if (user.role === 'admin') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot change admin role'
+            });
+        }
+        
+        user.role = 'teacher';
+        await user.save();
+        
+        res.json({
+            success: true,
+            message: 'User promoted to teacher successfully',
+            data: user.getPublicProfile()
+        });
+        
+    } catch (error) {
+        console.error('Promote to teacher error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to promote user',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+/**
+ * @desc    Hạ cấp teacher xuống user (Admin only)
+ * @route   PUT /api/users/admin/demote/:userId
+ * @access  Private (Admin)
+ */
+exports.demoteToUser = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        
+        if (user.role === 'user') {
+            return res.status(400).json({
+                success: false,
+                message: 'User is already a regular user'
+            });
+        }
+        
+        if (user.role === 'admin') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot change admin role'
+            });
+        }
+        
+        user.role = 'user';
+        await user.save();
+        
+        res.json({
+            success: true,
+            message: 'User demoted to regular user successfully',
+            data: user.getPublicProfile()
+        });
+        
+    } catch (error) {
+        console.error('Demote to user error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to demote user',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+/**
+ * @desc    Cập nhật role của user (Admin only)
+ * @route   PUT /api/users/admin/role/:userId
+ * @access  Private (Admin)
+ */
+exports.updateUserRole = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { role } = req.body;
+        
+        if (!['user', 'teacher', 'admin'].includes(role)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid role. Must be user, teacher, or admin'
+            });
+        }
+        
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        
+        // Không cho phép tự thay đổi role của chính mình
+        if (user._id.equals(req.user._id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot change your own role'
+            });
+        }
+        
+        user.role = role;
+        await user.save();
+        
+        res.json({
+            success: true,
+            message: `User role updated to ${role} successfully`,
+            data: user.getPublicProfile()
+        });
+        
+    } catch (error) {
+        console.error('Update user role error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update user role',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+/**
+ * @desc    Kích hoạt/vô hiệu hóa tài khoản user (Admin only)
+ * @route   PUT /api/users/admin/toggle-active/:userId
+ * @access  Private (Admin)
+ */
+exports.toggleUserActive = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        
+        // Không cho phép vô hiệu hóa chính mình
+        if (user._id.equals(req.user._id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot deactivate your own account'
+            });
+        }
+        
+        user.isActive = !user.isActive;
+        await user.save();
+        
+        res.json({
+            success: true,
+            message: `User ${user.isActive ? 'activated' : 'deactivated'} successfully`,
+            data: user.getPublicProfile()
+        });
+        
+    } catch (error) {
+        console.error('Toggle user active error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to toggle user status',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+/**
+ * @desc    Lấy thống kê users (Admin only)
+ * @route   GET /api/users/admin/stats
+ * @access  Private (Admin)
+ */
+exports.getUserStats = async (req, res) => {
+    try {
+        const totalUsers = await User.countDocuments();
+        const totalTeachers = await User.countDocuments({ role: 'teacher' });
+        const totalAdmins = await User.countDocuments({ role: 'admin' });
+        const totalRegularUsers = await User.countDocuments({ role: 'user' });
+        const activeUsers = await User.countDocuments({ isActive: true });
+        const inactiveUsers = await User.countDocuments({ isActive: false });
+        
+        // Users registered in last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const recentUsers = await User.countDocuments({
+            createdAt: { $gte: thirtyDaysAgo }
+        });
+        
+        res.json({
+            success: true,
+            data: {
+                total: totalUsers,
+                byRole: {
+                    users: totalRegularUsers,
+                    teachers: totalTeachers,
+                    admins: totalAdmins
+                },
+                byStatus: {
+                    active: activeUsers,
+                    inactive: inactiveUsers
+                },
+                recentRegistrations: recentUsers
+            }
+        });
+        
+    } catch (error) {
+        console.error('Get user stats error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch user statistics',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }

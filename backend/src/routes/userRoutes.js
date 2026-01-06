@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const userController = require('../controllers/userController');
-const { auth } = require('../middleware/auth');
+const { auth, isAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -61,5 +61,13 @@ router.put('/preferences', userController.updatePreferences);
 // Progress and statistics
 router.get('/stats', userController.getUserStats);
 router.put('/daily-goal', userController.updateDailyGoal);
+
+// Admin routes - Quản lý users
+router.get('/admin/all', isAdmin, userController.getAllUsers);
+router.get('/admin/stats', isAdmin, userController.getUserStats);
+router.put('/admin/promote/:userId', isAdmin, userController.promoteToTeacher);
+router.put('/admin/demote/:userId', isAdmin, userController.demoteToUser);
+router.put('/admin/role/:userId', isAdmin, userController.updateUserRole);
+router.put('/admin/toggle-active/:userId', isAdmin, userController.toggleUserActive);
 
 module.exports = router;
