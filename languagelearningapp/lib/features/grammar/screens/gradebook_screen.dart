@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/submission_model.dart';
 import '../services/grammar_question_service.dart';
-import '../../../services/auth_service.dart';
+import '../../auth/services/auth_service.dart';
 
 class GradebookScreen extends StatefulWidget {
   final String classId;

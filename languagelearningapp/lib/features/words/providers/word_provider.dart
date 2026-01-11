@@ -8,7 +8,7 @@ class WordProvider extends ChangeNotifier {
   final WordService _wordService;
 
   WordProvider({WordService? wordService})
-      : _wordService = wordService ?? WordService();
+    : _wordService = wordService ?? WordService();
 
   // State
   List<WordModel> _words = [];
@@ -16,7 +16,7 @@ class WordProvider extends ChangeNotifier {
   bool _isLoadingMore = false;
   String? _error;
   WordFilter _currentFilter = WordFilter.all;
-  
+
   // Pagination
   int _currentPage = 1;
   int _totalPages = 1;
@@ -61,7 +61,18 @@ class WordProvider extends ChangeNotifier {
         filter: filterString,
       );
 
-      final newWords = result['words'] as List<WordModel>;
+      // Debug: print result structure
+      print('🔍 Word Provider - Result keys: ${result.keys}');
+      print('🔍 Word Provider - Words type: ${result['words'].runtimeType}');
+      print('🔍 Word Provider - Total type: ${result['total'].runtimeType}');
+
+      // Safely cast words list from dynamic
+      final wordsData = result['words'];
+      final newWords = wordsData is List<WordModel>
+          ? wordsData
+          : (wordsData as List).cast<WordModel>();
+
+      // Get pagination data (already converted to int in service)
       _total = result['total'] as int;
       _totalPages = result['totalPages'] as int;
 
@@ -74,7 +85,9 @@ class WordProvider extends ChangeNotifier {
       _hasMore = _currentPage < _totalPages;
       _currentPage++;
       _error = null;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ Word Provider Error: $e');
+      print('📚 Stack trace: $stackTrace');
       _error = e.toString();
     } finally {
       _isLoading = false;
@@ -93,22 +106,22 @@ class WordProvider extends ChangeNotifier {
   // Toggle memorized status
   Future<void> toggleMemorized(String wordId, bool isMemorized) async {
     try {
-      final updatedWord = await _wordService.toggleMemorized(wordId, isMemorized);
-      
+      final updatedWord = await _wordService.toggleMemorized(
+        wordId,
+        isMemorized,
+      );
+
       final index = _words.indexWhere((w) => w.id == wordId);
       if (index != -1) {
-        _words[index] = updatedWord;
-        notifyListeners();
-      }
-
-      // Reload if filter doesn't match
-      if (_currentFilter == WordFilter.memorized && !isMemorized) {
-        _words.removeAt(index);
-        _total--;
-        notifyListeners();
-      } else if (_currentFilter == WordFilter.notMemorized && isMemorized) {
-        _words.removeAt(index);
-        _total--;
+        // Check if we need to remove from current filter
+        if ((_currentFilter == WordFilter.memorized && !isMemorized) ||
+            (_currentFilter == WordFilter.notMemorized && isMemorized)) {
+          _words.removeAt(index);
+          _total--;
+        } else {
+          // Just update the word in place
+          _words[index] = updatedWord;
+        }
         notifyListeners();
       }
     } catch (e) {
@@ -122,7 +135,7 @@ class WordProvider extends ChangeNotifier {
   Future<void> deleteWord(String wordId) async {
     try {
       await _wordService.deleteWord(wordId);
-      
+
       _words.removeWhere((w) => w.id == wordId);
       _total--;
       notifyListeners();

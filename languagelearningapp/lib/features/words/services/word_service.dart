@@ -59,7 +59,8 @@ class WordService {
     }
 
     try {
-      final url = '${ApiConstants.searchWords}?q=${Uri.encodeComponent(query)}&page=$page&limit=$limit';
+      final url =
+          '${ApiConstants.searchWords}?q=${Uri.encodeComponent(query)}&page=$page&limit=$limit';
 
       final response = await _client.get(
         Uri.parse(url),
@@ -67,19 +68,36 @@ class WordService {
       );
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      
+
       if (response.statusCode == 200) {
-        final words = (data['data']?['words'] as List?)
-                ?.map((json) => WordModel.fromJson(json as Map<String, dynamic>))
+        final words =
+            (data['data']?['words'] as List?)
+                ?.map(
+                  (json) => WordModel.fromJson(json as Map<String, dynamic>),
+                )
                 .toList() ??
             [];
 
+        // Safely parse numeric values that might be strings
+        final totalValue = data['data']?['total'];
+        final pageValue = data['data']?['page'];
+        final totalPagesValue = data['data']?['totalPages'];
+        final searchTimeValue = data['data']?['searchTime'];
+
         return {
           'words': words,
-          'total': data['data']?['total'] ?? 0,
-          'page': data['data']?['page'] ?? page,
-          'totalPages': data['data']?['totalPages'] ?? 1,
-          'searchTime': data['data']?['searchTime'] ?? 0,
+          'total': (totalValue is int)
+              ? totalValue
+              : int.tryParse(totalValue?.toString() ?? '0') ?? 0,
+          'page': (pageValue is int)
+              ? pageValue
+              : int.tryParse(pageValue?.toString() ?? '$page') ?? page,
+          'totalPages': (totalPagesValue is int)
+              ? totalPagesValue
+              : int.tryParse(totalPagesValue?.toString() ?? '1') ?? 1,
+          'searchTime': (searchTimeValue is num)
+              ? searchTimeValue
+              : double.tryParse(searchTimeValue?.toString() ?? '0') ?? 0,
         };
       }
 
@@ -112,22 +130,55 @@ class WordService {
       );
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      
+
       if (response.statusCode == 200) {
-        final words = (data['data']?['words'] as List?)
-                ?.map((json) => WordModel.fromJson(json as Map<String, dynamic>))
-                .toList() ??
-            [];
+        print('🔍 Word Service - Response data keys: ${data.keys}');
+        print(
+          '🔍 Word Service - data[\'data\'] type: ${data['data'].runtimeType}',
+        );
+
+        // Backend returns data as array directly, not {words: [...]}
+        final wordsData = data['data'];
+        final words = wordsData is List
+            ? wordsData
+                  .map(
+                    (json) => WordModel.fromJson(json as Map<String, dynamic>),
+                  )
+                  .toList()
+            : <WordModel>[];
+
+        print('🔍 Word Service - Parsed ${words.length} words');
+
+        // Get pagination data from root level
+        final totalValue = data['totalItems'] ?? data['total'];
+        final pageValue = data['currentPage'] ?? data['page'];
+        final totalPagesValue = data['totalPages'];
+
+        print(
+          '🔍 Word Service - total: $totalValue (${totalValue.runtimeType})',
+        );
+        print('🔍 Word Service - page: $pageValue (${pageValue.runtimeType})');
+        print(
+          '🔍 Word Service - totalPages: $totalPagesValue (${totalPagesValue.runtimeType})',
+        );
 
         return {
           'words': words,
-          'total': data['data']?['total'] ?? 0,
-          'page': data['data']?['page'] ?? page,
-          'totalPages': data['data']?['totalPages'] ?? 1,
+          'total': (totalValue is int)
+              ? totalValue
+              : int.tryParse(totalValue?.toString() ?? '0') ?? 0,
+          'page': (pageValue is int)
+              ? pageValue
+              : int.tryParse(pageValue?.toString() ?? '$page') ?? page,
+          'totalPages': (totalPagesValue is int)
+              ? totalPagesValue
+              : int.tryParse(totalPagesValue?.toString() ?? '1') ?? 1,
         };
       }
 
-      throw Exception(data['message']?.toString() ?? 'Không thể tải danh sách từ');
+      throw Exception(
+        data['message']?.toString() ?? 'Không thể tải danh sách từ',
+      );
     } catch (e) {
       throw Exception('Lỗi khi tải danh sách từ: $e');
     }
@@ -147,7 +198,7 @@ class WordService {
       );
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      
+
       if (response.statusCode != 200) {
         throw Exception(data['message']?.toString() ?? 'Không thể xóa từ');
       }
@@ -171,7 +222,7 @@ class WordService {
       );
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      
+
       if (response.statusCode == 200) {
         final wordData = data['data']?['word'];
         if (wordData is Map<String, dynamic>) {
@@ -180,7 +231,9 @@ class WordService {
         throw Exception('Dữ liệu trả về không hợp lệ');
       }
 
-      throw Exception(data['message']?.toString() ?? 'Không thể cập nhật trạng thái');
+      throw Exception(
+        data['message']?.toString() ?? 'Không thể cập nhật trạng thái',
+      );
     } catch (e) {
       throw Exception('Lỗi khi cập nhật trạng thái: $e');
     }
