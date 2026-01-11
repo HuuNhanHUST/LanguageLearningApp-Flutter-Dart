@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/grammar_question_model.dart';
 import '../models/submission_model.dart';
 import '../services/grammar_question_service.dart';
-import '../../../services/auth_service.dart';
+import '../../auth/services/auth_service.dart';
 
 class TakeTestScreen extends StatefulWidget {
   final String classId;
@@ -557,7 +557,7 @@ class _AnswerReviewCard extends StatelessWidget {
               final option = question.options[index];
               final optionLabel = String.fromCharCode(65 + index);
               final isSelected = answer.selectedIndex == index;
-              final isCorrectAnswer = question.correctIndex == index;
+              final isCorrectAnswer = question.correctAnswer == index;
 
               Color? bgColor;
               Color? borderColor;
@@ -607,7 +607,7 @@ class _AnswerReviewCard extends StatelessWidget {
                 ),
               );
             }),
-            if (question.explanation.isNotEmpty) ...[
+            if (question.explanation != null && question.explanation!.isNotEmpty) ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -622,7 +622,7 @@ class _AnswerReviewCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        question.explanation,
+                        question.explanation!,
                         style: const TextStyle(fontSize: 14),
                       ),
                     ),
